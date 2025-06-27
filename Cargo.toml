@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "src/bitcoin_loan_dapp_backend"
+]
+resolver = "2"
