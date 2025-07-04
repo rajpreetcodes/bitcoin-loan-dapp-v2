@@ -74,21 +74,7 @@ img {
   font-size: 0.875rem;
 }
 
-/* Steps */
-.steps {
-  padding: 60px 1rem;
-  border-top: 1px solid #444;
-}
-.step {
-  margin-bottom: 1rem;
-}
-.step-title {
-  font-weight: 700;
-}
-.step-desc {
-  font-size: 0.875rem;
-  color: #ccc;
-}
+/* Steps - Removed (now using HowItWorks.css) */
 
 /* Footer */
 .footer {

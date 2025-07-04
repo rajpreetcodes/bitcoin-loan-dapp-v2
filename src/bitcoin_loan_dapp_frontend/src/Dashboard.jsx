@@ -113,19 +113,40 @@ const Dashboard = () => {
 
     try {
       const actor = await getActor();
-      await actor.link_btc_address(btcAddressInput.trim());
+      const result = await actor.link_btc_address(btcAddressInput.trim());
+      
+      // Check if the result is an error (Candid Result type)
+      if (result && result.Err) {
+        throw new Error(result.Err);
+      }
       
       // Success - update the display
       setLinkedBtcAddress(btcAddressInput.trim());
       setBtcAddressInput('');
       
       // Show success message
-      setSuccessMessage('✅ Bitcoin wallet linked successfully!');
+      setSuccessMessage('✅ Bitcoin wallet linked successfully! Address verified with on-chain activity.');
       setTimeout(() => setSuccessMessage(null), 5000);
       
     } catch (error) {
       console.error('Failed to link Bitcoin address:', error);
-      setWalletError(error.message || 'Failed to link Bitcoin address');
+      
+      // Handle specific error messages from backend validation
+      let errorMessage = 'Failed to link Bitcoin address';
+      
+      if (error.message) {
+        if (error.message.includes('Invalid Bitcoin address format')) {
+          errorMessage = '❌ Invalid Bitcoin address format. Please use a valid P2PKH (1...), P2SH (3...), or Bech32 (bc1...) address.';
+        } else if (error.message.includes('Address has no on-chain activity')) {
+          errorMessage = '⚠️ This address has no transaction history. Please use an address with on-chain activity.';
+        } else if (error.message.includes('Failed to verify address activity')) {
+          errorMessage = '🔄 Unable to verify address activity. Please check the address and try again.';
+        } else {
+          errorMessage = `❌ ${error.message}`;
+        }
+      }
+      
+      setWalletError(errorMessage);
     } finally {
       setIsLinkingWallet(false);
     }

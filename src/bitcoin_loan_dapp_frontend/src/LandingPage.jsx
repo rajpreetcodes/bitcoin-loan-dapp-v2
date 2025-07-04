@@ -1,6 +1,7 @@
 import React from "react";
 import { useAuth } from "./AuthContext";
 import { useNavigate } from "react-router-dom";
+import "./HowItWorks.css";
 
 const LandingPage = () => {
   const { login, isLoading } = useAuth();
@@ -68,32 +69,50 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Steps */}
-      <section className="steps container">
-        <h2>How It Works</h2>
-        {[
-          {
-            step: "Step 1: Connect Wallet",
-            desc: "Connect your secure wallet to our platform.",
-          },
-          {
-            step: "Step 2: Lock Bitcoin",
-            desc: "Deposit your Bitcoin into a non-custodial vault.",
-          },
-          {
-            step: "Step 3: Receive Loan",
-            desc: "Receive your loan in stablecoins or other cryptocurrencies.",
-          },
-          {
-            step: "Step 4: Repay + Unlock",
-            desc: "Repay your loan and unlock your Bitcoin.",
-          },
-        ].map((s) => (
-          <div key={s.step} className="step">
-            <p className="step-title">{s.step}</p>
-            <p className="step-desc">{s.desc}</p>
+      {/* How It Works */}
+      <section className="how-it-works">
+        <div className="container">
+          <h2>How It Works</h2>
+          <p className="how-it-works-subtitle">
+            Get liquidity from your Bitcoin in four simple steps. Our streamlined process ensures you can access funds quickly while maintaining full control of your assets.
+          </p>
+          
+          <div className="steps-container">
+            {[
+              {
+                number: "1",
+                icon: "🔌",
+                title: "Connect Wallet",
+                description: "Securely connect your wallet to our platform using Internet Identity for seamless authentication.",
+              },
+              {
+                number: "2",
+                icon: "🔒",
+                title: "Lock Bitcoin",
+                description: "Deposit your Bitcoin into a secure, non-custodial vault powered by smart contracts.",
+              },
+              {
+                number: "3",
+                icon: "💵",
+                title: "Receive Loan",
+                description: "Instantly receive your loan in stablecoins or other cryptocurrencies at competitive rates.",
+              },
+              {
+                number: "4",
+                icon: "✅",
+                title: "Repay & Unlock",
+                description: "Repay your loan at any time and automatically unlock your Bitcoin collateral.",
+              },
+            ].map((step) => (
+              <div key={step.number} className="step-card">
+                <div className="step-number">{step.number}</div>
+                <span className="step-icon">{step.icon}</span>
+                <h3 className="step-title">{step.title}</h3>
+                <p className="step-description">{step.description}</p>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </section>
 
       {/* Footer */}
