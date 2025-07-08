@@ -1,0 +1,20 @@
+Bitcoin Loan DApp Deployment Information
+========================================
+Date: Tue Jul  8 07:20:23 UTC 2025
+Network: local
+Build Environment: production
+
+Canister IDs:
+- Backend: uxrrr-q7777-77774-qaaaq-cai
+- Frontend: u6s2n-gx777-77774-qaaba-cai
+
+Access URLs:
+- Backend: http://127.0.0.1:4943/?canisterId=uxrrr-q7777-77774-qaaaq-cai
+- Frontend: http://127.0.0.1:4943/?canisterId=u6s2n-gx777-77774-qaaba-cai
+
+DFX Commands:
+- Stop: dfx stop
+- Start: dfx start --clean --background
+- Status: dfx canister status --all --network local
+- Logs: dfx logs --network local
+- Redeploy: ./deploy.sh local

@@ -1,43 +1,44 @@
 {
-  "dependencies": {
-    "@dfinity/agent": "^2.1.3",
-    "@dfinity/auth-client": "^2.4.1",
-    "@dfinity/candid": "^2.1.3",
-    "@dfinity/principal": "^2.1.3",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^7.6.3"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.11",
-    "@testing-library/jest-dom": "^5.16.5",
-    "@testing-library/react": "^14.0.0",
-    "@types/react": "^18.2.14",
-    "@types/react-dom": "^18.2.6",
-    "@vitejs/plugin-react": "^4.0.1",
-    "autoprefixer": "^10.4.21",
-    "cross-fetch": "^3.1.6",
-    "dotenv": "^16.3.1",
-    "jsdom": "^22.1.0",
-    "postcss": "^8.5.6",
-    "sass": "^1.63.6",
-    "tailwindcss": "^4.1.11",
-    "typescript": "^5.1.3",
-    "vite": "^4.3.9",
-    "vite-plugin-environment": "^1.1.3",
-    "vitest": "^2.0.5"
-  },
   "name": "bitcoin_loan_dapp_frontend",
   "private": true,
-  "scripts": {
-    "build": "tsc && vite build",
-    "format": "prettier --write \"src/**/*.{json,js,jsx,ts,tsx,css,scss}\"",
-    "prebuild": "dfx generate",
-    "setup": "npm i && dfx canister create bitcoin_loan_dapp_backend && dfx generate bitcoin_loan_dapp_backend && dfx deploy",
-    "start": "vite --port 3000",
-    "dev": "vite --port 3000",
-    "test": "vitest run"
-  },
+  "version": "1.0.0",
   "type": "module",
-  "version": "0.0.0"
+  "scripts": {
+    "dev": "vite --port 3000",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "start": "npm run dev",
+    "build:prod": "NODE_ENV=production vite build",
+    "build:local": "DFX_NETWORK=local vite build",
+    "build:ic": "DFX_NETWORK=ic vite build",
+    "serve": "vite preview --port 4173",
+    "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "deploy:local": "npm run build:local && dfx deploy bitcoin_loan_dapp_frontend --network local",
+    "deploy:ic": "npm run build:ic && dfx deploy bitcoin_loan_dapp_frontend --network ic"
+  },
+  "dependencies": {
+    "@dfinity/agent": "^1.4.0",
+    "@dfinity/auth-client": "^1.4.0",
+    "@dfinity/candid": "^1.4.0",
+    "@dfinity/identity": "^1.4.0",
+    "@dfinity/principal": "^1.4.0",
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "dotenv": "^17.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.8.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.27",
+    "@types/react-dom": "^18.0.10",
+    "@vitejs/plugin-react": "^3.1.0",
+    "vite": "^4.1.0",
+    "vitest": "^0.28.5"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
 }

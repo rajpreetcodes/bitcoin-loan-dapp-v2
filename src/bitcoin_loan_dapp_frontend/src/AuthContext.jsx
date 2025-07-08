@@ -1,130 +1,96 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuthClient } from '@dfinity/auth-client';
-import { resetActor } from './actor';
+import { createActor } from './agent';
+import { idlFactory as backendIdlFactory } from '../../declarations/bitcoin_loan_dapp_backend/bitcoin_loan_dapp_backend.did.js';
 
-const AuthContext = createContext();
+export const AuthContext = createContext(null);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+const iiUrl = `http://${process.env.CANISTER_ID_INTERNET_IDENTITY}.localhost:4943`;
 
 export const AuthProvider = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authClient, setAuthClient] = useState(null);
-  const [principal, setPrincipal] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false); //Primary auth is II
+  const [identity, setIdentity] = useState(null);
+  const [userPrincipal, setUserPrincipal] = useState(null);
+
+  const [plugActor, setPlugActor] = useState(null); //Separate state for Plug actor
+  const [isPlugConnected, setIsPlugConnected] = useState(false);
 
   useEffect(() => {
-    initAuth();
+    AuthClient.create().then(async (client) => {
+      setAuthClient(client);
+      const authenticated = await client.isAuthenticated();
+      if (authenticated) {
+        handleAuthenticated(client);
+      }
+    });
   }, []);
 
-  const initAuth = async () => {
-    try {
-      // Configure the identity provider based on environment
-      const DFX_NETWORK = process.env.DFX_NETWORK || 'local';
-      
-      let identityProvider;
-      
-      if (DFX_NETWORK === "ic") {
-        // Use the official mainnet identity provider
-        identityProvider = "https://identity.ic0.app";
-      } else {
-        // Use the local replica's identity provider
-        const localCanisterId = process.env.CANISTER_ID_INTERNET_IDENTITY;
-        identityProvider = `http://${localCanisterId}.localhost:4943`;
-      }
+  const handleAuthenticated = (client) => {
+    const identity = client.getIdentity();
+    const principal = identity.getPrincipal();
 
-      const client = await AuthClient.create({
-        idleOptions: {
-          idleTimeout: 1000 * 60 * 30, // 30 minutes
-          disableDefaultIdleCallback: true,
-        },
-      });
-      
-      setAuthClient(client);
+    // Create an actor for II authenticated users
+    const iiActor = createActor(process.env.CANISTER_ID_BITCOIN_LOAN_DAPP_BACKEND, backendIdlFactory, {
+      agentOptions: { identity }
+    });
 
-      const isAuthenticated = await client.isAuthenticated();
-      setIsAuthenticated(isAuthenticated);
-
-      if (isAuthenticated) {
-        const identity = client.getIdentity();
-        setPrincipal(identity.getPrincipal());
-      }
-    } catch (error) {
-      console.error('Failed to initialize auth:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    // We can set this to a generic 'actor' state if needed, but for now we'll handle II and Plug separately.
+    setIdentity(identity);
+    setUserPrincipal(principal);
+    setIsAuthenticated(true);
   };
 
-  const login = async () => {
+  const login = () => {
     if (!authClient) return;
-
-    try {
-      setIsLoading(true);
-      
-      // Configure the identity provider based on environment
-      const DFX_NETWORK = process.env.DFX_NETWORK || 'local';
-      
-      let identityProvider;
-      
-      if (DFX_NETWORK === "ic") {
-        // Use the official mainnet identity provider
-        identityProvider = "https://identity.ic0.app";
-      } else {
-        // Use the local replica's identity provider
-        const localCanisterId = process.env.CANISTER_ID_INTERNET_IDENTITY;
-        identityProvider = `http://${localCanisterId}.localhost:4943`;
-      }
-
-      await authClient.login({
-        identityProvider: identityProvider,
-        onSuccess: () => {
-          setIsAuthenticated(true);
-          const identity = authClient.getIdentity();
-          setPrincipal(identity.getPrincipal());
-          resetActor(); // Reset actor to use new authenticated identity
-        },
-        onError: (error) => {
-          console.error('Login failed:', error);
-          setIsLoading(false);
-        },
-      });
-    } catch (error) {
-      console.error('Login failed:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    authClient.login({
+      identityProvider: iiUrl,
+      onSuccess: () => handleAuthenticated(authClient),
+    });
   };
 
   const logout = async () => {
     if (!authClient) return;
+    await authClient.logout();
+    setIsAuthenticated(false);
+    setIdentity(null);
+    setUserPrincipal(null);
+    setPlugActor(null);
+    setIsPlugConnected(false);
+  };
 
-    try {
-      await authClient.logout();
-      setIsAuthenticated(false);
-      setPrincipal(null);
-      resetActor(); // Reset actor to unauthenticated
-    } catch (error) {
-      console.error('Logout failed:', error);
+  const connectPlug = async () => {
+    if (!window.ic || !window.ic.plug) {
+      window.open('https://plugwallet.ooo/', '_blank');
+      return;
     }
+    const backendCanisterId = process.env.CANISTER_ID_BITCOIN_LOAN_DAPP_BACKEND;
+    const whitelist = [backendCanisterId];
+    await window.ic.plug.requestConnect({ whitelist });
+    const plugActor = await window.ic.plug.createActor({ 
+      canisterId: backendCanisterId, 
+      interfaceFactory: backendIdlFactory 
+    });
+    setPlugActor(plugActor);
+    setIsPlugConnected(true);
   };
 
-  const value = {
-    isAuthenticated,
-    principal,
-    isLoading,
-    login,
-    logout,
-  };
+  //The actor passed to the app is the Plug actor if connected, otherwise null.
+  const actor = plugActor;
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{
+      login,
+      logout,
+      connectPlug,
+      isAuthenticated,
+      isPlugConnected,
+      actor,
+      userPrincipal,
+    }}>
       {children}
     </AuthContext.Provider>
   );
-}; 
+};
+
+export const useAuth = () => useContext(AuthContext); 

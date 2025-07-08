@@ -1,7 +1,12 @@
 use candid::{CandidType, Principal};
 use ic_cdk::api::call::CallResult;
 use ic_cdk::api::management_canister::http_request::{
-    http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod, HttpResponse, TransformArgs,
+    CanisterHttpRequestArgument,
+    HttpMethod,
+    HttpHeader,
+    http_request,
+    HttpResponse,
+    TransformArgs,
 };
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
@@ -87,21 +92,14 @@ thread_local! {
 #[derive(Deserialize)]
 struct IpfsResponse { #[serde(rename = "Hash")] hash: String }
 
-// Blockstream API response structures
-#[derive(Deserialize)]
-struct ChainStats {
-    tx_count: u64,
-}
-
-#[derive(Deserialize)]
-struct AddressInfo {
-    chain_stats: ChainStats,
-}
-
 // HTTP response transformer
 #[ic_cdk::query]
 fn transform_http_response(args: TransformArgs) -> HttpResponse {
-    HttpResponse { status: args.response.status.clone(), body: args.response.body.clone(), headers: Vec::new() }
+    HttpResponse { 
+        status: args.response.status.clone(), 
+        body: args.response.body.clone(), 
+        headers: Vec::new() 
+    }
 }
 
 // Store loan on IPFS and return hash
@@ -270,68 +268,43 @@ pub fn whoami() -> Principal {
     ic_cdk::caller()
 }
 
-/// Allows a logged-in user to save their Bitcoin address with comprehensive validation
+/// Simple Bitcoin address linking with format validation only
 #[ic_cdk::update]
-pub async fn link_btc_address(address: String) -> Result<(), String> {
+pub fn link_btc_address(address: String) -> Result<(), String> {
     let caller = ic_cdk::caller();
     let trimmed_address = address.trim();
     
-    // A. Format Validation (Mandatory)
+    // Check if address is empty
     if trimmed_address.is_empty() {
         return Err("Bitcoin address cannot be empty".to_string());
     }
     
-    // Check Bitcoin address format
+    // Basic format validation - check if it starts with 1, 3, or bc1
     let is_valid_format = if trimmed_address.starts_with('1') {
         // P2PKH address: starts with 1, length 26-35
         trimmed_address.len() >= 26 && trimmed_address.len() <= 35
     } else if trimmed_address.starts_with('3') {
-        // P2SH address: starts with 3, length 26-35
+        // P2SH address: starts with 3, length 26-35  
         trimmed_address.len() >= 26 && trimmed_address.len() <= 35
     } else if trimmed_address.starts_with("bc1") {
-        // Bech32 address: starts with bc1
+        // Bech32 address: starts with bc1, length 42-62
         trimmed_address.len() >= 42 && trimmed_address.len() <= 62
     } else {
         false
     };
     
+    // Return error if format is invalid
     if !is_valid_format {
-        return Err("Invalid Bitcoin address format".to_string());
+        return Err("Invalid Bitcoin address format.".to_string());
     }
     
-    // B. Activity Check via HTTPS Outcall (Advanced)
-    let request = CanisterHttpRequestArgument {
-        url: format!("https://blockstream.info/api/address/{}", trimmed_address),
-        method: HttpMethod::GET,
-        body: None,
-        max_response_bytes: Some(2048),
-        transform: Some(ic_cdk::api::management_canister::http_request::TransformContext::from_name("transform_http_response".to_string(), vec![])),
-        headers: vec![],
-    };
+    // Save the address to the HashMap linking Principal to BTC address
+    STATE.with(|state| {
+        state.borrow_mut().btc_addresses.insert(caller, trimmed_address.to_string());
+    });
     
-    match http_request(request, 25_000_000_000).await {
-        Ok((response,)) if response.status == 200u16 => {
-            let response_body = String::from_utf8(response.body).map_err(|_| "Failed to parse API response".to_string())?;
-            let address_info: AddressInfo = serde_json::from_str(&response_body).map_err(|_| "Failed to parse address information".to_string())?;
-            
-            if address_info.chain_stats.tx_count == 0 {
-                return Err("Address has no on-chain activity".to_string());
-            }
-            
-            // Address is valid and active - save it
-            STATE.with(|state| {
-                state.borrow_mut().btc_addresses.insert(caller, trimmed_address.to_string());
-            });
-            
-            Ok(())
-        }
-        Ok((response,)) => {
-            Err(format!("Failed to verify address activity: HTTP {}", response.status))
-        }
-        Err((_, msg)) => {
-            Err(format!("Address has no on-chain activity"))
-        }
-    }
+    // Return success
+    Ok(())
 }
 
 /// Retrieves the linked Bitcoin address for the logged-in user
@@ -341,6 +314,11 @@ pub fn get_linked_btc_address() -> Option<String> {
     STATE.with(|state| {
         state.borrow().btc_addresses.get(&caller).cloned()
     })
+}
+
+#[ic_cdk::query]
+fn health() -> String {
+    "OK".to_string()
 }
 
 ic_cdk::export_candid!();

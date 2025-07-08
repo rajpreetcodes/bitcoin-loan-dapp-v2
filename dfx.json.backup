@@ -1,0 +1,31 @@
+{
+  "canisters": {
+    "bitcoin_loan_dapp_backend": {
+      "candid": "src/bitcoin_loan_dapp_backend/bitcoin_loan_dapp_backend.did",
+      "package": "bitcoin_loan_dapp_backend",
+      "type": "rust",
+      "post_build": "cp $CANISTER_CANDID_PATH src/bitcoin_loan_dapp_backend/bitcoin_loan_dapp_backend.did"
+    },
+    "bitcoin_loan_dapp_frontend": {
+      "type": "assets",
+      "dependencies": [
+        "bitcoin_loan_dapp_backend"
+      ],
+      "source": [
+        "src/bitcoin_loan_dapp_frontend/dist"
+            ],
+      "workspace": "bitcoin_loan_dapp_frontend"
+    }
+  },
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:4943",
+      "type": "ephemeral",
+      "replica": {
+        "subnet_type": "application"
+      }
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

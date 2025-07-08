@@ -3,27 +3,30 @@
     "bitcoin_loan_dapp_backend": {
       "candid": "src/bitcoin_loan_dapp_backend/bitcoin_loan_dapp_backend.did",
       "package": "bitcoin_loan_dapp_backend",
-      "type": "rust",
-      "post_build": "cp $CANISTER_CANDID_PATH src/bitcoin_loan_dapp_backend/bitcoin_loan_dapp_backend.did"
+      "type": "rust"
     },
     "bitcoin_loan_dapp_frontend": {
-      "type": "assets",
       "dependencies": [
         "bitcoin_loan_dapp_backend"
       ],
+      "frontend": {
+        "entrypoint": "src/bitcoin_loan_dapp_frontend/src/index.html"
+      },
       "source": [
         "src/bitcoin_loan_dapp_frontend/dist"
       ],
-      "workspace": "bitcoin_loan_dapp_frontend"
+      "type": "assets"
     },
     "internet_identity": {
       "type": "custom",
       "candid": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity.did",
       "wasm": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity_dev.wasm.gz",
       "remote": {
-        "id": { "ic": "rdmx6-jaaaa-aaaaa-aaadq-cai" }
+        "id": {
+          "ic": "rdmx6-jaaaa-aaaaa-aaadq-cai"
+        }
       },
-      "frontend": {}
+      "dependencies": []
     }
   },
   "networks": {
@@ -33,6 +36,12 @@
       "replica": {
         "subnet_type": "application"
       }
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
     }
   },
   "output_env_file": ".env",

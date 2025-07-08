@@ -1,1 +1,2 @@
 .dfx/\n.env\n*.pem\nnode_modules/
+node_modules
