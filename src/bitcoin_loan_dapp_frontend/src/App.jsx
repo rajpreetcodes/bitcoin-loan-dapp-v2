@@ -1,246 +1,268 @@
-import React from 'react';
-import './index.css';
-import { AuthProvider, useAuth } from './AuthContext';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from './context/AuthContext';
+import { CreateLoanModal } from './components/CreateLoanModal';
+import toast, { Toaster } from 'react-hot-toast';
+import './index.css'; // This is the stylesheet we will create next
 
-// Landing Page Component
-function LandingPage({ onLogin }) {
-  return (
-    <div className="landing-page">
-      {/* Header */}
-      <header className="header">
-        <div className="container">
-          <div className="logo">
-            <span className="bitcoin-icon">₿</span>
-            <span>Bitcoin Loan Platform</span>
-          </div>
-          <button className="cta-button" onClick={onLogin}>
-            Get Started
-          </button>
-        </div>
-      </header>
+function App() {
+  const { login, logout, connectPlug, isAuthenticated, isPlugConnected, actor, userPrincipal } = useAuth();
 
-      {/* Hero Section */}
-      <section className="hero">
-        <div className="container">
-          <div className="hero-content">
-            <h1 className="hero-title">
-              Bitcoin-Backed Loans.<br />
-              <span className="highlight">Decentralized.</span><br />
-              <span className="highlight">Non-Custodial.</span>
-            </h1>
-            <p className="hero-subtitle">
-              Unlock the value of your Bitcoin without selling. Get instant loans 
-              backed by your Bitcoin on the Internet Computer blockchain.
-            </p>
-            <button className="primary-button" onClick={onLogin}>
-              <span className="button-icon">🆔</span>
-              Login with Internet Identity
-            </button>
-          </div>
-          <div className="hero-image">
-            <div className="bitcoin-coin">₿</div>
-          </div>
-        </div>
-      </section>
+  const [loans, setLoans] = useState([]);
+  const [btcAddress, setBtcAddress] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
 
-      {/* Key Features */}
-      <section className="features">
-        <div className="container">
-          <h2 className="section-title">Key Features</h2>
-          <div className="features-grid">
-            <div className="feature-card">
-              <div className="feature-icon">🔒</div>
-              <h3>Secure & Non-Custodial</h3>
-              <p>Your Bitcoin remains in your control. We never take custody of your assets.</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">⚡</div>
-              <h3>Instant Liquidity</h3>
-              <p>Get loans instantly without credit checks or lengthy approval processes.</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">🌐</div>
-              <h3>Fully Decentralized</h3>
-              <p>Built on Internet Computer blockchain for maximum transparency and security.</p>
-            </div>
-          </div>
-        </div>
-      </section>
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!actor) return;
+      setIsLoading(true);
+      try {
+        // Use Promise.all for concurrent fetching
+        const [fetchedLoans, fetchedBtcAddressResult] = await Promise.all([
+          actor.get_loans(),
+          actor.get_btc_address()
+        ]);
+        setLoans(fetchedLoans || []);
+        // Handle Option<String> which comes as [string] or [] from Candid
+        setBtcAddress(Array.isArray(fetchedBtcAddressResult) && fetchedBtcAddressResult.length > 0 ? fetchedBtcAddressResult[0] : fetchedBtcAddressResult || '');
+      } catch (error) {
+        console.error("Failed to fetch user data:", error);
+        // This handles the "get_loans is not a function" error gracefully
+        if (error.message && error.message.includes("is not a function")) {
+            alert("API mismatch detected. Please ensure your backend canister is deployed with the latest code.");
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-      {/* How It Works */}
-      <section className="how-it-works">
-        <div className="container">
-          <h2 className="section-title">How It Works</h2>
-          <div className="steps">
-            <div className="step">
-              <div className="step-number">1</div>
-              <h3>Connect Wallet</h3>
-              <p>Login with Internet Identity for secure authentication</p>
-            </div>
-            <div className="step">
-              <div className="step-number">2</div>
-              <h3>Link Bitcoin</h3>
-              <p>Connect your Bitcoin address to use as collateral</p>
-            </div>
-            <div className="step">
-              <div className="step-number">3</div>
-              <h3>Receive Loan</h3>
-              <p>Get instant loans while keeping your Bitcoin safe</p>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-// Dashboard Component
-function Dashboard({ userPrincipal, onLogout, onConnectPlug, isPlugConnected, actor }) {
-  const [health, setHealth] = React.useState('');
-  const [loading, setLoading] = React.useState(false);
-
-  const handleHealthCheck = async () => {
-    if (!actor) {
-      alert("Plug Wallet is not connected. Please connect it to make a transaction.");
-      return;
+    if (isAuthenticated && actor) {
+      fetchUserData();
+    } else {
+        setIsLoading(false);
     }
-    
-    setLoading(true);
-    try {
-      const healthStatus = await actor.health();
-      setHealth(healthStatus);
-      alert("Backend health check successful: " + healthStatus);
-    } catch (error) {
-      console.error("Health check failed:", error);
-      alert("Health check failed. See console for details.");
-    } finally {
-      setLoading(false);
+  }, [actor, isAuthenticated, isPlugConnected]);
+
+  const handleBtcAddressLink = async (e) => {
+    e.preventDefault();
+    const newAddress = e.target.elements.btcAddress.value;
+    if (actor && newAddress) {
+      await actor.link_btc_address(newAddress);
+      setBtcAddress(newAddress);
+      toast.success("Bitcoin address linked successfully!");
     }
   };
 
-  return (
-    <div className="dashboard">
-      {/* Dashboard Header */}
-      <header className="dashboard-header">
-        <div className="container">
-          <div className="logo">
-            <span className="bitcoin-icon">₿</span>
-            <span>Dashboard</span>
-          </div>
-          <div className="user-info">
-            <span className="user-principal">
-              {userPrincipal?.toText().slice(0, 8)}...
-            </span>
-            <button className="logout-button" onClick={onLogout}>
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
+  const handleConnect = async () => {
+    setIsConnecting(true);
+    try {
+      await login();
+    } catch (error) {
+      console.error("Connection failed:", error);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
 
-      {/* Dashboard Content */}
-      <main className="dashboard-main">
-        <div className="container">
-          {/* Wallet Connection Section */}
-          <section className="wallet-section">
-            <div className="card">
-              <h3>Wallet Connection</h3>
-              <div className="wallet-status">
-                <div className="status-item">
-                  <span className="status-label">Internet Identity:</span>
-                  <span className="status-value connected">✅ Connected</span>
-                </div>
-                <div className="status-item">
-                  <span className="status-label">Plug Wallet:</span>
-                  <span className={`status-value ${isPlugConnected ? 'connected' : 'disconnected'}`}>
-                    {isPlugConnected ? '✅ Connected' : '❌ Not Connected'}
-                  </span>
-                </div>
-              </div>
-              
-              {!isPlugConnected && (
-                <button className="secondary-button" onClick={onConnectPlug}>
-                  <span className="button-icon">🔌</span>
-                  Connect Plug Wallet
-                </button>
-              )}
-            </div>
-          </section>
-
-          {/* Actions Section */}
-          <section className="actions-section">
-            <div className="card">
-              <h3>Available Actions</h3>
-              <div className="action-buttons">
-                <button 
-                  className={`action-button ${!isPlugConnected ? 'disabled' : ''}`}
-                  onClick={handleHealthCheck} 
-                  disabled={!isPlugConnected || loading}
-                >
-                  <span className="button-icon">🏥</span>
-                  {loading ? 'Checking...' : 'Health Check'}
-                </button>
-                
-                <button 
-                  className={`action-button ${!isPlugConnected ? 'disabled' : ''}`}
-                  disabled={!isPlugConnected}
-                >
-                  <span className="button-icon">💰</span>
-                  Create Loan
-                </button>
-                
-                <button 
-                  className={`action-button ${!isPlugConnected ? 'disabled' : ''}`}
-                  disabled={!isPlugConnected}
-                >
-                  <span className="button-icon">📊</span>
-                  View Loans
-                </button>
-              </div>
-              
-              {!isPlugConnected && (
-                <p className="requirement-note">
-                  * Plug Wallet connection required for transactions
-                </p>
-              )}
-              
-              {health && (
-                <div className="health-status">
-                  <span>Backend Status: {health}</span>
-                </div>
-              )}
-            </div>
-          </section>
-        </div>
-      </main>
-    </div>
-  );
-}
-
-// Main App Component
-function AppContent() {
-  const { login, logout, connectPlug, isAuthenticated, isPlugConnected, actor, userPrincipal } = useAuth();
-
+  // The landing page if not authenticated
   if (!isAuthenticated) {
-    return <LandingPage onLogin={login} />;
+    return (
+      <div className="landing-page">
+        {/* Hero Section */}
+        <div className="hero-section">
+          <div className="ic-logo-container">
+            <div className="ic-logo">
+              <div className="infinity-symbol">∞</div>
+              <div className="ic-text">
+                <span className="percentage">100% on-chain</span>
+                <span className="brand">INTERNET COMPUTER</span>
+              </div>
+            </div>
+          </div>
+          
+          <h1 className="hero-title">Bitcoin-Backed Loans. Decentralized. Non-Custodial.</h1>
+          <p className="hero-subtitle">
+            Get liquidity without selling your BTC — on-chain, secure, 
+            <br />and trustless.
+          </p>
+          
+          <button 
+            className="connect-button" 
+            onClick={handleConnect}
+            disabled={isConnecting}
+          >
+            {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+          </button>
+        </div>
+
+        {/* Key Features Section */}
+        <div className="features-section">
+          <h2 className="section-title">Key Features</h2>
+          <p className="section-subtitle">
+            Explore the innovative features that make our platform the premier choice for Bitcoin-backed loans.
+          </p>
+          
+          <div className="features-grid">
+            <div className="feature-card">
+              <div className="feature-icon">🔒</div>
+              <h3>Non-Custodial Vaults</h3>
+              <p>Your Bitcoin remains under your control, secured by smart contracts.</p>
+            </div>
+            
+            <div className="feature-card">
+              <div className="feature-icon">⚡</div>
+              <h3>Instant, Flexible Loans</h3>
+              <p>Access liquidity with loan terms tailored to your needs.</p>
+            </div>
+            
+            <div className="feature-card">
+              <div className="feature-icon">🔗</div>
+              <h3>Smart-Contract Driven</h3>
+              <p>Security and transparency via our smart contract system.</p>
+            </div>
+            
+            <div className="feature-card">
+              <div className="feature-icon">🌐</div>
+              <h3>Runs on Internet Computer</h3>
+              <p>Decentralized and scalable platform powered by ICP.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* How It Works Section */}
+        <div className="how-it-works-section">
+          <h2 className="section-title">How It Works</h2>
+          <p className="section-subtitle">
+            Get liquidity from your Bitcoin in four simple steps. Our streamlined process
+            <br />ensures you can access funds quickly while maintaining full control of your assets.
+          </p>
+          
+          <div className="steps-grid">
+            <div className="step">
+              <div className="step-number">1</div>
+              <h3>Connect Wallet</h3>
+              <p>Link your Bitcoin wallet and authenticate with Internet Identity</p>
+            </div>
+            
+            <div className="step">
+              <div className="step-number">2</div>
+              <h3>Deposit Collateral</h3>
+              <p>Lock your Bitcoin as collateral in our secure smart contracts</p>
+            </div>
+            
+            <div className="step">
+              <div className="step-number">3</div>
+              <h3>Receive Loan</h3>
+              <p>Get instant liquidity in ckBTC based on your collateral value</p>
+            </div>
+            
+            <div className="step">
+              <div className="step-number">4</div>
+              <h3>Repay & Withdraw</h3>
+              <p>Repay the loan to unlock and withdraw your Bitcoin collateral</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
+  // The main dashboard
   return (
-    <Dashboard 
-      userPrincipal={userPrincipal}
-      onLogout={logout}
-      onConnectPlug={connectPlug}
-      isPlugConnected={isPlugConnected}
-      actor={actor}
-    />
-  );
-}
+    <>
+      <Toaster position="top-center" reverseOrder={false} />
+      {isModalOpen && 
+        <CreateLoanModal 
+          onClose={() => setIsModalOpen(false)} 
+          onLoanCreated={(newLoan) => {
+            setLoans(prevLoans => [...prevLoans, newLoan]);
+            toast.success("Loan created successfully!");
+          }} 
+        />
+      }
+      <div className="app-container">
+        <header className="dashboard-header">
+          <div className="logo">
+            <h2>Bitcoin Loan Dashboard</h2>
+            <p>Decentralized lending platform</p>
+          </div>
+          <div className="user-info">
+            <span>{userPrincipal?.toText().substring(0, 5)}...{userPrincipal?.toText().slice(-3)}</span>
+            <button onClick={logout}>Logout</button>
+          </div>
+        </header>
 
-function App() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+        <main className="dashboard-main">
+          <h2>Welcome to Your Dashboard</h2>
+          <p className="subtitle">Manage your bitcoin-backed loans with complete transparency and security.</p>
+
+          {/* Temporarily hide Plug connect banner - working with II for now */}
+
+          <div className="stats-grid">
+            {isLoading ? (
+              <>
+                <div className="stat-card"><div className="skeleton skeleton-title"></div><div className="skeleton skeleton-text"></div></div>
+                <div className="stat-card"><div className="skeleton skeleton-title"></div><div className="skeleton skeleton-text"></div></div>
+                <div className="stat-card"><div className="skeleton skeleton-title"></div><div className="skeleton skeleton-text"></div></div>
+                <div className="stat-card"><div className="skeleton skeleton-title"></div><div className="skeleton skeleton-text"></div></div>
+              </>
+            ) : (
+              <>
+                <div className="stat-card"><h4>ACTIVE LOANS</h4><span>{loans.length}</span></div>
+                <div className="stat-card"><h4>TOTAL BORROWED</h4><span>0.00 <small>ckBTC</small></span></div>
+                <div className="stat-card"><h4>COLLATERAL LOCKED</h4><span>0.00 <small>BTC</small></span></div>
+                <div className="stat-card wallet-card">
+                  <h4>YOUR BITCOIN WALLET</h4>
+                  {btcAddress ? (
+                    <p className="address-display">{btcAddress}</p>
+                  ) : (
+                    <form onSubmit={handleBtcAddressLink}>
+                      <input name="btcAddress" type="text" placeholder="Enter Bitcoin address..."/>
+                      <button type="submit" disabled={!isAuthenticated}>Link Address</button>
+                    </form>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="quick-actions">
+            <h3>Quick Actions</h3>
+            <div className="action-cards">
+              <div className="action-card" onClick={() => isAuthenticated && setIsModalOpen(true)}>
+                <h4>+ Create New Loan</h4>
+                <p>Start a new loan with your Bitcoin collateral.</p>
+              </div>
+              <div className="action-card">
+                <h4>View Loan History</h4>
+                <p>Review your past and current loans.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="loan-history">
+            <h3>Recent Loan Activity</h3>
+            {isLoading ? (
+              <p>Loading loan history...</p>
+            ) : loans.length > 0 ? (
+              <ul>
+                {loans.map(loan => (
+                  <li key={loan.id}>
+                    Loan of {loan.loan_amount} against {loan.collateral_amount} BTC
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="empty-state">
+                <p>You have no active loans.</p>
+                <span>Create a new loan to get started!</span>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+    </>
   );
 }
 
