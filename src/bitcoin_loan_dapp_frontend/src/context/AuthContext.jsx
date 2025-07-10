@@ -2,10 +2,9 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuthClient } from '@dfinity/auth-client';
 import { createActor } from '../agent'; // This path is now correct (../agent)
 import { idlFactory as backendIdlFactory } from '../../../declarations/bitcoin_loan_dapp_backend/bitcoin_loan_dapp_backend.did.js';
+import { IDENTITY_PROVIDER_URL, BACKEND_CANISTER_ID } from '../config';
 
 export const AuthContext = createContext();
-
-const iiUrl = `http://${process.env.CANISTER_ID_INTERNET_IDENTITY}.localhost:4943`;
 
 export const AuthProvider = ({ children }) => {
     const [authClient, setAuthClient] = useState(null);
@@ -27,7 +26,7 @@ export const AuthProvider = ({ children }) => {
     const handleAuthenticated = (client) => {
         const identity = client.getIdentity();
         const principal = identity.getPrincipal();
-        const genericActor = createActor(process.env.CANISTER_ID_BITCOIN_LOAN_DAPP_BACKEND, backendIdlFactory, {
+        const genericActor = createActor(BACKEND_CANISTER_ID, backendIdlFactory, {
             agentOptions: { identity }
         });
         setActor(genericActor);
@@ -39,7 +38,7 @@ export const AuthProvider = ({ children }) => {
 
     const login = () => {
         authClient?.login({
-            identityProvider: iiUrl,
+            identityProvider: IDENTITY_PROVIDER_URL, // Use the imported config variable
             onSuccess: () => handleAuthenticated(authClient),
         });
     };
@@ -61,16 +60,15 @@ export const AuthProvider = ({ children }) => {
             window.open('https://plugwallet.ooo/', '_blank');
             return;
         }
-        const backendCanisterId = process.env.CANISTER_ID_BITCOIN_LOAN_DAPP_BACKEND;
-        await window.ic.plug.requestConnect({ whitelist: [backendCanisterId] });
+        await window.ic.plug.requestConnect({ whitelist: [BACKEND_CANISTER_ID] });
 
         const plugAgent = window.ic.plug.agent;
         if(!plugAgent) {
-            await window.ic.plug.createAgent({whitelist: [backendCanisterId]});
+            await window.ic.plug.createAgent({whitelist: [BACKEND_CANISTER_ID]});
         }
 
         const plugActorInstance = await window.ic.plug.createActor({
-            canisterId: backendCanisterId,
+            canisterId: BACKEND_CANISTER_ID,
             interfaceFactory: backendIdlFactory,
         });
 

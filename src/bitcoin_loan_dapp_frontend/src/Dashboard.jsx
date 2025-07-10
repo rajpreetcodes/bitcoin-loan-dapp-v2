@@ -1,71 +1,59 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from './AuthContext';
-import { getActor, healthCheck, CURRENT_ENV, CONFIG } from './actor';
+import { useAuth } from './context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { CreateLoanModal } from './components/CreateLoanModal';
 import './Dashboard.css';
 
 const Dashboard = () => {
   const { 
     isAuthenticated, 
-    user, 
-    authMethod, 
+    userPrincipal, 
     logout, 
-    forceReconnect, 
-    error: authError, 
-    clearError 
+    actor
   } = useAuth();
   
-  const [linkedBitcoinAddress, setLinkedBitcoinAddress] = useState('');
+  const navigate = useNavigate();
+  const [loans, setLoans] = useState([]);
+  const [btcAddress, setBtcAddress] = useState('');
   const [bitcoinAddressInput, setBitcoinAddressInput] = useState('');
   const [isLinking, setIsLinking] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [backendHealth, setBackendHealth] = useState(null);
-  const [isTestingBackend, setIsTestingBackend] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // PRODUCTION-READY BACKEND HEALTH CHECK
+  // Redirect to landing page if not authenticated
   useEffect(() => {
-    const checkBackendHealth = async () => {
-      try {
-        const health = await healthCheck();
-        setBackendHealth(health);
-        if (!health.success) {
-          setError(`Backend health check failed: ${health.error}`);
-        }
-      } catch (err) {
-        console.error("Health check failed:", err);
-        setBackendHealth({ success: false, error: err.message });
-      }
-    };
+    if (!isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
 
-    checkBackendHealth();
-  }, []);
-
-  // PRODUCTION-READY LOAD LINKED ADDRESS
+  // Load user data on mount
   useEffect(() => {
-    const loadLinkedAddress = async () => {
-      if (!isAuthenticated) return;
-      
+    const fetchUserData = async () => {
+      if (!actor) return;
+
+      setIsLoading(true);
       try {
-        console.log("📋 Loading linked Bitcoin address...");
-        const actor = await getActor();
-        const address = await actor.get_linked_btc_address();
-        
-        if (address && address.length > 0) {
-          setLinkedBitcoinAddress(address);
-          console.log("✅ Linked address loaded:", address);
-        } else {
-          console.log("ℹ️ No linked address found");
-        }
+        const [fetchedLoans, fetchedBtcAddressResult] = await Promise.all([
+          actor.get_loans(),
+          actor.get_btc_address()
+        ]);
+        setLoans(fetchedLoans || []);
+        setBtcAddress(fetchedBtcAddressResult.length > 0 ? fetchedBtcAddressResult[0] : '');
       } catch (error) {
-        console.error("Failed to load linked Bitcoin address:", error);
-        setError(`Failed to load linked address: ${error.message}`);
+        console.error("Failed to fetch user data:", error);
+        setError("Failed to load user data. Please try again.");
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    loadLinkedAddress();
-  }, [isAuthenticated]);
+    fetchUserData();
+  }, [actor]);
 
-  // PRODUCTION-READY LINK BITCOIN ADDRESS
+  // Handle Bitcoin address linking
   const handleLinkBitcoinAddress = async () => {
     if (!bitcoinAddressInput.trim()) {
       setError('Please enter a Bitcoin address');
@@ -84,15 +72,11 @@ const Dashboard = () => {
     setSuccess('');
 
     try {
-      console.log("🔗 Linking Bitcoin address:", bitcoinAddressInput);
-      const actor = await getActor();
       const result = await actor.link_btc_address(bitcoinAddressInput.trim());
-      
       if (result.includes('successfully')) {
-        setLinkedBitcoinAddress(bitcoinAddressInput.trim());
+        setBtcAddress(bitcoinAddressInput.trim());
         setBitcoinAddressInput('');
         setSuccess('Bitcoin address linked successfully!');
-        console.log("✅ Bitcoin address linked successfully");
       } else {
         setError(result);
       }
@@ -104,190 +88,208 @@ const Dashboard = () => {
     }
   };
 
-  // PRODUCTION-READY DIRECT BACKEND TEST
-  const testBackendConnection = async () => {
-    setIsTestingBackend(true);
-    setError('');
-    
-    try {
-      console.log("🔍 Testing backend connection...");
-      const actor = await getActor();
-      console.log("✅ Actor obtained, calling whoami...");
-      const result = await actor.whoami();
-      console.log("✅ Backend test successful:", result.toString());
-      setSuccess(`Backend test successful! Principal: ${result.toString()}`);
-    } catch (error) {
-      console.error("Backend connection failed:", error);
-      setError(`Backend test failed: ${error.message}`);
-    } finally {
-      setIsTestingBackend(false);
-    }
-  };
-
-  // PRODUCTION-READY CLEAR MESSAGES
+  // Clear messages
   const clearMessages = () => {
     setError('');
     setSuccess('');
-    clearError();
   };
 
+  // Calculate stats
+  const totalBorrowed = loans.reduce((acc, loan) => acc + Number(loan.loan_amount), 0);
+  const totalCollateral = loans.reduce((acc, loan) => acc + Number(loan.collateral_amount), 0);
+  const activeLoanCount = loans.length;
+
   if (!isAuthenticated) {
-    return (
-      <div className="dashboard">
-        <div className="auth-required">
-          <h2>🔐 Authentication Required</h2>
-          <p>Please log in to access the dashboard.</p>
-        </div>
-      </div>
-    );
+    return null; // Will redirect via useEffect
   }
 
   return (
     <div className="dashboard">
-      {/* PRODUCTION-READY HEADER */}
-      <div className="dashboard-header">
-        <div className="user-info">
-          <h2>🏦 Bitcoin Loan Dashboard</h2>
-          <div className="user-details">
-            <p><strong>Environment:</strong> {CURRENT_ENV}</p>
-            <p><strong>Host:</strong> {CONFIG.host}</p>
-            <p><strong>User Principal:</strong> {user?.principal}</p>
-            <p><strong>Auth Method:</strong> {authMethod}</p>
+      {/* Header */}
+      <header className="dashboard-header">
+        <div className="header-content">
+          <div className="logo-section">
+            <h1>Bitcoin Loan Dashboard</h1>
+            <p>Decentralized lending platform</p>
+          </div>
+          <div className="user-section">
+            <div className="user-info">
+              <span className="user-principal">
+                {userPrincipal?.toText().substring(0, 8)}...{userPrincipal?.toText().slice(-4)}
+              </span>
+            </div>
+            <button onClick={logout} className="logout-button">
+              Logout
+            </button>
           </div>
         </div>
-        <div className="header-actions">
-          <button onClick={logout} className="logout-btn">
-            🚪 Logout
-          </button>
-        </div>
-      </div>
+      </header>
 
-      {/* PRODUCTION-READY ERROR HANDLING */}
-      {(error || authError) && (
-        <div className="alert error">
-          <div className="alert-content">
-            <p>❌ {error || authError}</p>
-            <div className="alert-actions">
-              <button onClick={clearMessages} className="clear-btn">Clear</button>
-              <button onClick={forceReconnect} className="reconnect-btn">
-                🔄 Reconnect {authMethod === 'plug_wallet' ? 'Plug Wallet' : 'Internet Identity'}
+      {/* Main Content */}
+      <main className="dashboard-main">
+        {/* Welcome Section */}
+        <section className="welcome-section">
+          <h2>Welcome to Your Dashboard</h2>
+          <p>Manage your bitcoin-backed loans with complete transparency and security.</p>
+        </section>
+
+        {/* Error/Success Messages */}
+        {error && (
+          <div className="alert alert-error">
+            <span className="alert-icon">⚠️</span>
+            <span>{error}</span>
+            <button onClick={clearMessages} className="alert-close">×</button>
+          </div>
+        )}
+
+        {success && (
+          <div className="alert alert-success">
+            <span className="alert-icon">✅</span>
+            <span>{success}</span>
+            <button onClick={clearMessages} className="alert-close">×</button>
+          </div>
+        )}
+
+        {/* Stats Grid */}
+        <section className="stats-section">
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-icon">📊</div>
+              <div className="stat-content">
+                <h3>Active Loans</h3>
+                <p className="stat-value">{activeLoanCount}</p>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon">💰</div>
+              <div className="stat-content">
+                <h3>Total Borrowed</h3>
+                <p className="stat-value">{totalBorrowed.toFixed(8)} ckBTC</p>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon">🔒</div>
+              <div className="stat-content">
+                <h3>Collateral Locked</h3>
+                <p className="stat-value">{totalCollateral.toFixed(8)} BTC</p>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon">🏦</div>
+              <div className="stat-content">
+                <h3>Your Bitcoin Wallet</h3>
+                <p className="stat-value">
+                  {btcAddress ? (
+                    <span className="address-display">
+                      {btcAddress.substring(0, 6)}...{btcAddress.slice(-4)}
+                    </span>
+                  ) : (
+                    'Not linked'
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Quick Actions */}
+        <section className="actions-section">
+          <h3>Quick Actions</h3>
+          <div className="actions-grid">
+            <div className="action-card">
+              <h4>+ Create New Loan</h4>
+              <p>Start a new loan with your Bitcoin collateral.</p>
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="action-button primary"
+                disabled={!btcAddress}
+              >
+                Create Loan
+              </button>
+            </div>
+
+            <div className="action-card">
+              <h4>View Loan History</h4>
+              <p>Review your past and current loans.</p>
+              <button className="action-button secondary">
+                View History
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* SUCCESS MESSAGES */}
-      {success && (
-        <div className="alert success">
-          <div className="alert-content">
-            <p>✅ {success}</p>
-            <button onClick={clearMessages} className="clear-btn">Clear</button>
-          </div>
-        </div>
-      )}
-
-      {/* PRODUCTION-READY BACKEND HEALTH STATUS */}
-      <div className="health-section">
-        <h3>🏥 Backend Health Status</h3>
-        <div className={`health-indicator ${backendHealth?.success ? 'healthy' : 'unhealthy'}`}>
-          {backendHealth?.success ? (
-            <span>✅ Backend Healthy - Principal: {backendHealth.principal}</span>
-          ) : (
-            <span>❌ Backend Unhealthy - {backendHealth?.error}</span>
-          )}
-        </div>
-        <button 
-          onClick={testBackendConnection} 
-          disabled={isTestingBackend}
-          className="test-btn"
-        >
-          {isTestingBackend ? '🔄 Testing...' : '🧪 Test Direct'}
-        </button>
-      </div>
-
-      {/* PRODUCTION-READY BITCOIN WALLET SECTION */}
-      <div className="section">
-        <div className="card">
-          <h3>₿ Bitcoin Wallet</h3>
-          
-          {linkedBitcoinAddress ? (
-            <div className="linked-address">
-              <p><strong>Linked Address:</strong></p>
-              <p className="address">{linkedBitcoinAddress}</p>
-              <div className="address-actions">
+        {/* Bitcoin Wallet Section */}
+        {!btcAddress && (
+          <section className="wallet-section">
+            <div className="wallet-card">
+              <h3>Link Your Bitcoin Wallet</h3>
+              <p>Connect your Bitcoin address to start creating loans.</p>
+              
+              <div className="wallet-form">
+                <input
+                  type="text"
+                  placeholder="Enter Bitcoin address (1... or 3... or bc1...)"
+                  value={bitcoinAddressInput}
+                  onChange={(e) => setBitcoinAddressInput(e.target.value)}
+                  className="wallet-input"
+                />
                 <button 
-                  onClick={() => setLinkedBitcoinAddress('')}
-                  className="unlink-btn"
+                  onClick={handleLinkBitcoinAddress}
+                  disabled={isLinking}
+                  className="wallet-button"
                 >
-                  🔗 Unlink
+                  {isLinking ? 'Linking...' : 'Link Address'}
                 </button>
               </div>
             </div>
+          </section>
+        )}
+
+        {/* Recent Loan Activity */}
+        <section className="activity-section">
+          <h3>Recent Loan Activity</h3>
+          {loans.length === 0 ? (
+            <div className="empty-state">
+              <p>You have no active loans.</p>
+              <p>Create a new loan to get started!</p>
+            </div>
           ) : (
-            <div className="link-address">
-              <p>No Bitcoin address linked yet.</p>
-              <input
-                type="text"
-                placeholder="Enter Bitcoin address (1... or 3... or bc1...)"
-                value={bitcoinAddressInput}
-                onChange={(e) => setBitcoinAddressInput(e.target.value)}
-                className="address-input"
-              />
-              <button 
-                onClick={handleLinkBitcoinAddress}
-                disabled={isLinking}
-                className="link-btn"
-              >
-                {isLinking ? '🔗 Linking...' : '🔗 Link Address'}
-              </button>
+            <div className="loans-grid">
+              {loans.map((loan, index) => (
+                <div key={index} className="loan-card">
+                  <div className="loan-header">
+                    <h4>Loan #{index + 1}</h4>
+                    <span className="loan-status active">Active</span>
+                  </div>
+                  <div className="loan-details">
+                    <div className="loan-detail">
+                      <span className="label">Amount:</span>
+                      <span className="value">{Number(loan.loan_amount).toFixed(8)} ckBTC</span>
+                    </div>
+                    <div className="loan-detail">
+                      <span className="label">Collateral:</span>
+                      <span className="value">{Number(loan.collateral_amount).toFixed(8)} BTC</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
-        </div>
-      </div>
+        </section>
+      </main>
 
-      {/* PRODUCTION-READY TROUBLESHOOTING SECTION */}
-      <div className="section">
-        <div className="card troubleshooting">
-          <h3>🔧 Troubleshooting</h3>
-          <div className="troubleshooting-actions">
-            <button onClick={forceReconnect} className="action-btn">
-              🔄 Force Reconnect
-            </button>
-            <button onClick={testBackendConnection} className="action-btn">
-              🧪 Test Backend
-            </button>
-            <button onClick={clearMessages} className="action-btn">
-              🧹 Clear Messages
-            </button>
-          </div>
-          
-          <div className="troubleshooting-info">
-            <h4>If you're experiencing issues:</h4>
-            <ul>
-              <li>🔄 Try force reconnecting your wallet</li>
-              <li>🧪 Test backend connectivity</li>
-              <li>🔑 Make sure DFX is running locally</li>
-              <li>🌐 Check your internet connection</li>
-              <li>🔌 Ensure Plug Wallet is properly connected</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* PRODUCTION-READY DEVELOPMENT INFO */}
-      {CURRENT_ENV === 'local' && (
-        <div className="section">
-          <div className="card dev-info">
-            <h3>🛠️ Development Information</h3>
-            <ul>
-              <li><strong>Environment:</strong> {CURRENT_ENV}</li>
-              <li><strong>Host:</strong> {CONFIG.host}</li>
-              <li><strong>Identity Provider:</strong> {CONFIG.identityProvider}</li>
-              <li><strong>Backend Health:</strong> {backendHealth?.success ? '✅ Healthy' : '❌ Unhealthy'}</li>
-            </ul>
-          </div>
-        </div>
+      {/* Create Loan Modal */}
+      {isModalOpen && (
+        <CreateLoanModal 
+          onClose={() => setIsModalOpen(false)} 
+          onLoanCreated={(newLoan) => {
+            setLoans(prevLoans => [...prevLoans, newLoan]);
+            setSuccess("Loan created successfully!");
+          }} 
+        />
       )}
     </div>
   );

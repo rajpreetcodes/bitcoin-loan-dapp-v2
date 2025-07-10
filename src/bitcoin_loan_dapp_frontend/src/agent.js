@@ -1,4 +1,5 @@
 import { Actor, HttpAgent } from "@dfinity/agent";
+import { HOST, DFX_NETWORK } from "./config"; // Import from our new config file
 
 /**
  * Creates an actor for interacting with a canister.
@@ -9,17 +10,12 @@ import { Actor, HttpAgent } from "@dfinity/agent";
  * @returns {import("@dfinity/agent").ActorSubclass<any>}
  */
 export const createActor = (canisterId, idlFactory, options = {}) => {
-  const host = process.env.DFX_NETWORK === "local" ? "http://127.0.0.1:4943" : "https://icp-api.io";
-  
-  const agentOptions = options.agentOptions || {};
-  
   const agent = new HttpAgent({
-    host,
-    ...agentOptions,
+    host: HOST,
+    ...options.agentOptions,
   });
 
-  // For local development, fetch the root key
-  if (process.env.DFX_NETWORK === "local") {
+  if (DFX_NETWORK === "local") {
     agent.fetchRootKey().catch(err => {
       console.warn("Unable to fetch root key. Check to ensure that your local replica is running");
       console.error(err);

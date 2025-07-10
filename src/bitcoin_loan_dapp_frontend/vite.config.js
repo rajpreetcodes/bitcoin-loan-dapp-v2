@@ -2,14 +2,14 @@ import {defineConfig} from 'vite';
 import react from '@vitejs/plugin-react';
 import dotenv from 'dotenv';
 
+// Load environment variables from .env file
 dotenv.config();
 
 export default defineConfig({
   plugins:[react()],
   define:{
-    //Inject canister IDs from .env file
-    'process.env.CANISTER_ID_INTERNET_IDENTITY':JSON.stringify(process.env.CANISTER_ID_INTERNET_IDENTITY),
-    'process.env.CANISTER_ID_BITCOIN_LOAN_DAPP_BACKEND':JSON.stringify(process.env.CANISTER_ID_BITCOIN_LOAN_DAPP_BACKEND),
+    // Expose all process.env variables to the client
+    'process.env': process.env
   },
   server:{
     port:3000,

@@ -15,34 +15,27 @@ function App() {
 
   useEffect(() => {
     const fetchUserData = async () => {
+      // Only run if the actor is available
       if (!actor) return;
+
       setIsLoading(true);
       try {
-        // Use Promise.all for concurrent fetching
         const [fetchedLoans, fetchedBtcAddressResult] = await Promise.all([
           actor.get_loans(),
           actor.get_btc_address()
         ]);
         setLoans(fetchedLoans || []);
-        // Handle Option<String> which comes as [string] or [] from Candid
-        setBtcAddress(Array.isArray(fetchedBtcAddressResult) && fetchedBtcAddressResult.length > 0 ? fetchedBtcAddressResult[0] : fetchedBtcAddressResult || '');
+        setBtcAddress(fetchedBtcAddressResult.length > 0 ? fetchedBtcAddressResult[0] : '');
       } catch (error) {
         console.error("Failed to fetch user data:", error);
-        // This handles the "get_loans is not a function" error gracefully
-        if (error.message && error.message.includes("is not a function")) {
-            alert("API mismatch detected. Please ensure your backend canister is deployed with the latest code.");
-        }
+        toast.error("API mismatch. Could not fetch user data from the backend.");
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (isAuthenticated && actor) {
-      fetchUserData();
-    } else {
-        setIsLoading(false);
-    }
-  }, [actor, isAuthenticated, isPlugConnected]);
+    fetchUserData();
+  }, [actor]); // The dependency array is now just [actor]
 
   const handleBtcAddressLink = async (e) => {
     e.preventDefault();
@@ -92,7 +85,7 @@ function App() {
             onClick={handleConnect}
             disabled={isConnecting}
           >
-            {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+            {isConnecting ? 'Connecting...' : 'Login with Internet Identity'}
           </button>
         </div>
 
@@ -168,6 +161,10 @@ function App() {
     );
   }
 
+  // Calculate dynamic stats from loans array
+  const totalBorrowed = loans.reduce((acc, loan) => acc + Number(loan.loan_amount), 0);
+  const totalCollateral = loans.reduce((acc, loan) => acc + Number(loan.collateral_amount), 0);
+
   // The main dashboard
   return (
     <>
@@ -210,8 +207,14 @@ function App() {
             ) : (
               <>
                 <div className="stat-card"><h4>ACTIVE LOANS</h4><span>{loans.length}</span></div>
-                <div className="stat-card"><h4>TOTAL BORROWED</h4><span>0.00 <small>ckBTC</small></span></div>
-                <div className="stat-card"><h4>COLLATERAL LOCKED</h4><span>0.00 <small>BTC</small></span></div>
+                <div className="stat-card">
+                  <h4>TOTAL BORROWED</h4>
+                  <span>{totalBorrowed.toFixed(2)} <small>ckBTC</small></span>
+                </div>
+                <div className="stat-card">
+                  <h4>COLLATERAL LOCKED</h4>
+                  <span>{totalCollateral.toFixed(2)} <small>BTC</small></span>
+                </div>
                 <div className="stat-card wallet-card">
                   <h4>YOUR BITCOIN WALLET</h4>
                   {btcAddress ? (
