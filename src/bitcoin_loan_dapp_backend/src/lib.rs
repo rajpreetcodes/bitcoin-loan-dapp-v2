@@ -93,10 +93,20 @@ thread_local! {
 
 #[ic_cdk::update]
 pub fn create_loan(collateral: f64, loan: f64) -> Result<Loan, String> {
+    if collateral <= 0.0 || loan <= 0.0 {
+        return Err("Collateral and loan amounts must be positive".to_string());
+    }
+
     let owner = ic_cdk::caller();
     let loan_id = LOAN_ID_COUNTER.with(|c| { let mut val = c.borrow_mut(); *val += 1; *val });
 
-    let new_loan = Loan { id: loan_id, owner, collateral_amount: collateral, loan_amount: loan, created_at: ic_cdk::api::time() };
+    let new_loan = Loan { 
+        id: loan_id, 
+        owner, 
+        collateral_amount: collateral, 
+        loan_amount: loan, 
+        created_at: ic_cdk::api::time() 
+    };
 
     LOANS.with(|p| p.borrow_mut().insert(loan_id, new_loan.clone()));
 
@@ -112,10 +122,29 @@ pub fn create_loan(collateral: f64, loan: f64) -> Result<Loan, String> {
 
 #[ic_cdk::update]
 pub fn link_btc_address(address: String) -> Result<(), String> {
+    if address.trim().is_empty() {
+        return Err("Bitcoin address cannot be empty".to_string());
+    }
+
+    // Basic Bitcoin address validation
+    if !address.starts_with("bc1") && !address.starts_with("1") && !address.starts_with("3") {
+        return Err("Invalid Bitcoin address format. Must start with bc1, 1, or 3".to_string());
+    }
+
+    if address.len() < 26 || address.len() > 60 {
+        return Err("Invalid Bitcoin address length".to_string());
+    }
+
     let owner = ic_cdk::caller();
-    let mut profile = USERS.with(|p| p.borrow().get(&owner).unwrap_or_default());
-    profile.btc_address = Some(address);
-    USERS.with(|p| p.borrow_mut().insert(owner, profile));
+    let profile = UserProfile {
+        btc_address: Some(address.clone())
+    };
+    
+    USERS.with(|p| {
+        let mut users = p.borrow_mut();
+        users.insert(owner, profile);
+    });
+    
     Ok(())
 }
 
@@ -125,7 +154,11 @@ pub fn get_loans() -> Vec<Loan> {
     USER_LOANS.with(|p| {
         match p.borrow().get(&owner) {
             Some(loan_ids) => LOANS.with(|loans_map| {
-                loan_ids.0.iter().filter_map(|id| loans_map.borrow().get(id)).collect()
+                loan_ids.0.iter()
+                    .filter_map(|id| {
+                        loans_map.borrow().get(id).map(|loan| loan.clone())
+                    })
+                    .collect()
             }),
             None => vec![],
         }
@@ -139,6 +172,8 @@ pub fn get_btc_address() -> Option<String> {
 }
 
 #[ic_cdk::query]
-pub fn health() -> String { "OK".to_string() }
+pub fn health() -> String { 
+    "OK".to_string() 
+}
 
 ic_cdk::export_candid!();
