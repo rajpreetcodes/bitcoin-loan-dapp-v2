@@ -1,14 +1,17 @@
 {
   "__Candid_UI": {
-    "local": "umunu-kh777-77774-qaaca-cai"
-  },
-  "bitcoin_loan_dapp_backend": {
-    "local": "uxrrr-q7777-77774-qaaaq-cai"
-  },
-  "bitcoin_loan_dapp_frontend": {
     "local": "u6s2n-gx777-77774-qaaba-cai"
   },
-  "internet_identity": {
+  "bitcoin_escrow_canister": {
+    "local": "uxrrr-q7777-77774-qaaaq-cai"
+  },
+  "bitcoin_loan_dapp_backend": {
     "local": "uzt4z-lp777-77774-qaabq-cai"
+  },
+  "bitcoin_loan_dapp_frontend": {
+    "local": "umunu-kh777-77774-qaaca-cai"
+  },
+  "internet_identity": {
+    "local": "ulvla-h7777-77774-qaacq-cai"
   }
 }

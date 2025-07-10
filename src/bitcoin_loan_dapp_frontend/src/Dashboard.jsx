@@ -1,109 +1,67 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { CreateLoanModal } from './components/CreateLoanModal';
 import './Dashboard.css';
 
-const Dashboard = () => {
-  const { 
-    isAuthenticated, 
-    userPrincipal, 
-    logout, 
-    actor
-  } = useAuth();
-  
-  const navigate = useNavigate();
+const Dashboard = ({ openLoanModal }) => {
+  const { actor, userPrincipal } = useAuth();
   const [loans, setLoans] = useState([]);
   const [btcAddress, setBtcAddress] = useState('');
-  const [bitcoinAddressInput, setBitcoinAddressInput] = useState('');
-  const [isLinking, setIsLinking] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Redirect to landing page if not authenticated
+  // Load loans and BTC address
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/');
+    const fetchData = async () => {
+      if (!actor) return;
+      
+      setIsLoading(true);
+      setError('');
+      
+      try {
+        const [fetchedLoans, fetchedBtcAddressResult] = await Promise.all([
+          actor.get_loans(),
+          actor.get_btc_address()
+        ]);
+        
+        setLoans(fetchedLoans || []);
+        setBtcAddress(fetchedBtcAddressResult.length > 0 ? fetchedBtcAddressResult[0] : '');
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+        setError("Failed to load data. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [actor]);
+
+  // Handle BTC address linking
+  const handleBtcAddressLink = async (e) => {
+    e.preventDefault();
+    
+    const newAddress = e.target.elements.btcAddress.value;
+    if (!newAddress) {
+      setError("Please enter a Bitcoin address");
+      return;
     }
-  }, [isAuthenticated, navigate]);
-
-  // Load user data function that can be called multiple times
-  const fetchUserData = async () => {
-    if (!actor) return;
-
+    
     setIsLoading(true);
+    setError('');
+    setSuccess('');
+    
     try {
-      const [fetchedLoans, fetchedBtcAddressResult] = await Promise.all([
-        actor.get_loans(),
-        actor.get_btc_address()
-      ]);
-      setLoans(fetchedLoans || []);
-      setBtcAddress(fetchedBtcAddressResult.length > 0 ? fetchedBtcAddressResult[0] : '');
+      await actor.link_btc_address(newAddress);
+      setBtcAddress(newAddress);
+      setSuccess("Bitcoin address linked successfully!");
+      e.target.reset();
     } catch (error) {
-      console.error("Failed to fetch user data:", error);
-      setError("Failed to load user data. Please try again.");
+      console.error("Failed to link BTC address:", error);
+      setError("Failed to link Bitcoin address. Please try again.");
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Load user data on mount
-  useEffect(() => {
-    fetchUserData();
-  }, [actor]);
-
-  // Handle Bitcoin address linking
-  const handleLinkBitcoinAddress = async () => {
-    if (!bitcoinAddressInput.trim()) {
-      setError('Please enter a Bitcoin address');
-      return;
-    }
-
-    // Enhanced Bitcoin address validation to support all formats
-    // This includes legacy (1...), SegWit (3...), Bech32 (bc1...) and Taproot (bc1p...)
-    const bitcoinAddressRegex = /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$|^bc1[a-zA-Z0-9]{8,100}$/;
-    if (!bitcoinAddressRegex.test(bitcoinAddressInput.trim())) {
-      setError('Please enter a valid Bitcoin address (starting with 1, 3, or bc1)');
-      return;
-    }
-
-    setIsLinking(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      const result = await actor.link_btc_address(bitcoinAddressInput.trim());
-      
-      if ('Ok' in result) {
-        setBtcAddress(bitcoinAddressInput.trim());
-        setBitcoinAddressInput('');
-        setSuccess('Bitcoin address linked successfully!');
-        // Refresh data after linking
-        fetchUserData();
-      } else if ('Err' in result) {
-        setError(result.Err);
-      }
-    } catch (error) {
-      console.error("Failed to link Bitcoin address:", error);
-      setError(`Failed to link Bitcoin address: ${error.message}`);
-    } finally {
-      setIsLinking(false);
-    }
-  };
-
-  // Handle loan creation
-  const handleLoanCreated = () => {
-    setSuccess("Loan created successfully!");
-    // Refresh data after creating a loan
-    fetchUserData();
-  };
-
-  // Handle view history
-  const handleViewHistory = () => {
-    // For now, just show a message since we don't have a separate history page
-    setSuccess("Viewing loan history (all loans are shown below)");
   };
 
   // Clear messages
@@ -113,42 +71,18 @@ const Dashboard = () => {
   };
 
   // Calculate stats
+  const totalLoans = loans.length;
   const totalBorrowed = loans.reduce((acc, loan) => acc + Number(loan.loan_amount), 0);
   const totalCollateral = loans.reduce((acc, loan) => acc + Number(loan.collateral_amount), 0);
-  const activeLoanCount = loans.length;
-
-  if (!isAuthenticated) {
-    return null; // Will redirect via useEffect
-  }
 
   return (
-    <div className="dashboard">
-      {/* Header */}
-      <header className="dashboard-header">
-        <div className="header-content">
-          <div className="logo-section">
-            <h1>Bitcoin Loan Dashboard</h1>
-            <p>Decentralized lending platform</p>
-          </div>
-          <div className="user-section">
-            <div className="user-info">
-              <span className="user-principal">
-                {userPrincipal?.toText().substring(0, 8)}...{userPrincipal?.toText().slice(-4)}
-              </span>
-            </div>
-            <button onClick={logout} className="logout-button">
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
-
+    <div className="dashboard-content">
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Welcome Section */}
         <section className="welcome-section">
-          <h2>Welcome to Your Dashboard</h2>
-          <p>Manage your bitcoin-backed loans with complete transparency and security.</p>
+          <h2>Loan Dashboard</h2>
+          <p>Manage your Bitcoin-backed loans on the Internet Computer.</p>
         </section>
 
         {/* Error/Success Messages */}
@@ -174,8 +108,8 @@ const Dashboard = () => {
             <div className="stat-card">
               <div className="stat-icon">📊</div>
               <div className="stat-content">
-                <h3>Active Loans</h3>
-                <p className="stat-value">{activeLoanCount}</p>
+                <h3>Total Loans</h3>
+                <p className="stat-value">{totalLoans}</p>
               </div>
             </div>
 
@@ -190,27 +124,55 @@ const Dashboard = () => {
             <div className="stat-card">
               <div className="stat-icon">🔒</div>
               <div className="stat-content">
-                <h3>Collateral Locked</h3>
+                <h3>Total Collateral</h3>
                 <p className="stat-value">{totalCollateral.toFixed(8)} BTC</p>
               </div>
             </div>
-
-            <div className="stat-card">
-              <div className="stat-icon">🏦</div>
-              <div className="stat-content">
-                <h3>Your Bitcoin Wallet</h3>
-                <p className="stat-value">
-                  {btcAddress ? (
-                    <span className="address-display">
-                      {btcAddress.substring(0, 6)}...{btcAddress.slice(-4)}
-                    </span>
-                  ) : (
-                    'Not linked'
-                  )}
-                </p>
-              </div>
-            </div>
           </div>
+        </section>
+
+        {/* BTC Address Section */}
+        <section className="btc-address-section">
+          <h3>Your Bitcoin Address</h3>
+          {btcAddress ? (
+            <div className="address-display">
+              <p>Your linked Bitcoin address: <strong>{btcAddress}</strong></p>
+              <form onSubmit={handleBtcAddressLink} className="address-form">
+                <input
+                  type="text"
+                  name="btcAddress"
+                  placeholder="Update your Bitcoin address"
+                  className="address-input"
+                />
+                <button 
+                  type="submit" 
+                  className="action-button primary"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Updating...' : 'Update Address'}
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="address-empty">
+              <p>You haven't linked a Bitcoin address yet.</p>
+              <form onSubmit={handleBtcAddressLink} className="address-form">
+                <input
+                  type="text"
+                  name="btcAddress"
+                  placeholder="Enter your Bitcoin address"
+                  className="address-input"
+                />
+                <button 
+                  type="submit" 
+                  className="action-button primary"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Linking...' : 'Link Address'}
+                </button>
+              </form>
+            </div>
+          )}
         </section>
 
         {/* Quick Actions */}
@@ -219,11 +181,10 @@ const Dashboard = () => {
           <div className="actions-grid">
             <div className="action-card">
               <h4>+ Create New Loan</h4>
-              <p>Start a new loan with your Bitcoin collateral.</p>
+              <p>Start a new Bitcoin-backed loan.</p>
               <button 
-                onClick={() => setIsModalOpen(true)}
+                onClick={openLoanModal}
                 className="action-button primary"
-                disabled={!btcAddress}
               >
                 Create Loan
               </button>
@@ -231,63 +192,42 @@ const Dashboard = () => {
 
             <div className="action-card">
               <h4>View Loan History</h4>
-              <p>Review your past and current loans.</p>
-              <button 
-                className="action-button secondary"
-                onClick={handleViewHistory}
-              >
+              <p>See your past loan transactions.</p>
+              <button className="action-button secondary">
                 View History
               </button>
             </div>
           </div>
         </section>
 
-        {/* Bitcoin Wallet Section */}
-        {!btcAddress && (
-          <section className="wallet-section">
-            <div className="wallet-card">
-              <h3>Link Your Bitcoin Wallet</h3>
-              <p>Connect your Bitcoin address to start creating loans.</p>
-              
-              <div className="wallet-form">
-                <input
-                  type="text"
-                  placeholder="Enter Bitcoin address (1... or 3... or bc1...)"
-                  value={bitcoinAddressInput}
-                  onChange={(e) => setBitcoinAddressInput(e.target.value)}
-                  className="wallet-input"
-                />
-                <button 
-                  onClick={handleLinkBitcoinAddress}
-                  disabled={isLinking}
-                  className="wallet-button"
-                >
-                  {isLinking ? 'Linking...' : 'Link Address'}
-                </button>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Recent Loan Activity */}
+        {/* Loans Section */}
         <section className="activity-section">
-          <h3>Recent Loan Activity</h3>
-          {loans.length === 0 ? (
+          <h3>Your Loans</h3>
+          {isLoading ? (
+            <p>Loading loans...</p>
+          ) : loans.length === 0 ? (
             <div className="empty-state">
-              <p>You have no active loans.</p>
-              <p>Create a new loan to get started!</p>
+              <p>You don't have any active loans.</p>
+              <button 
+                onClick={openLoanModal}
+                className="action-button primary"
+              >
+                Create Your First Loan
+              </button>
             </div>
           ) : (
             <div className="loans-grid">
-              {loans.map((loan, index) => (
-                <div key={loan.id || index} className="loan-card">
+              {loans.map((loan) => (
+                <div key={loan.id} className="loan-card">
                   <div className="loan-header">
                     <h4>Loan #{loan.id}</h4>
-                    <span className="loan-status active">Active</span>
+                    <span className={`loan-status status-${loan.status.toLowerCase()}`}>
+                      {loan.status}
+                    </span>
                   </div>
                   <div className="loan-details">
                     <div className="loan-detail">
-                      <span className="label">Amount:</span>
+                      <span className="label">Loan Amount:</span>
                       <span className="value">{Number(loan.loan_amount).toFixed(8)} ckBTC</span>
                     </div>
                     <div className="loan-detail">
@@ -296,8 +236,20 @@ const Dashboard = () => {
                     </div>
                     <div className="loan-detail">
                       <span className="label">Created:</span>
-                      <span className="value">{new Date(Number(loan.created_at) / 1000000).toLocaleDateString()}</span>
+                      <span className="value">
+                        {new Date(Number(loan.created_at) / 1000000).toLocaleDateString()}
+                      </span>
                     </div>
+                    <div className="loan-detail">
+                      <span className="label">Repay By:</span>
+                      <span className="value">
+                        {loan.due_date ? new Date(Number(loan.due_date) / 1000000).toLocaleDateString() : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="loan-actions">
+                    <button className="action-button primary">View Details</button>
+                    <button className="action-button secondary">Repay Loan</button>
                   </div>
                 </div>
               ))}
@@ -305,18 +257,6 @@ const Dashboard = () => {
           )}
         </section>
       </main>
-
-      {/* Create Loan Modal */}
-      {isModalOpen && (
-        <CreateLoanModal 
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            // Refresh data when modal closes (in case a loan was created)
-            fetchUserData();
-          }} 
-        />
-      )}
     </div>
   );
 };

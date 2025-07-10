@@ -1,0 +1,56 @@
+/* EscrowDashboard.css */
+/* Additional styles specific to the escrow dashboard */
+
+/* Status colors */
+.status-pending {
+  background-color: #ffd166;
+  color: #664500;
+}
+
+.status-locked {
+  background-color: #06d6a0;
+  color: #00573f;
+}
+
+.status-released {
+  background-color: #118ab2;
+  color: #ffffff;
+}
+
+.status-refunded {
+  background-color: #ef476f;
+  color: #ffffff;
+}
+
+.status-unknown {
+  background-color: #8d99ae;
+  color: #ffffff;
+}
+
+/* Action buttons */
+.action-button.primary {
+  background-color: #3498db;
+}
+
+.action-button.secondary {
+  background-color: #7f8c8d;
+}
+
+/* Escrow specific cards */
+.loan-card {
+  border-left: 4px solid #3498db;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+.empty-state p {
+  color: #6c757d;
+  font-size: 1.1rem;
+} 

@@ -5,9 +5,16 @@
       "package": "bitcoin_loan_dapp_backend",
       "type": "rust"
     },
+    "bitcoin_escrow_canister": {
+      "candid": "src/bitcoin_escrow_canister/bitcoin_escrow_canister.did",
+      "package": "bitcoin_escrow_canister",
+      "type": "rust",
+      "source": ["src/bitcoin_escrow_canister/src"]
+    },
     "bitcoin_loan_dapp_frontend": {
       "dependencies": [
-        "bitcoin_loan_dapp_backend"
+        "bitcoin_loan_dapp_backend",
+        "bitcoin_escrow_canister"
       ],
       "frontend": {
         "entrypoint": "src/bitcoin_loan_dapp_frontend/src/index.html"
