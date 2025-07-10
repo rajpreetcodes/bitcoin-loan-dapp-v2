@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import { CreateLoanModal } from './components/CreateLoanModal';
 import Dashboard from './Dashboard';
@@ -18,30 +17,56 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [activeTab, setActiveTab] = useState('loans'); // 'loans' or 'escrow'
+  const [shouldRefreshLoans, setShouldRefreshLoans] = useState(false);
+  const [shouldRefreshEscrows, setShouldRefreshEscrows] = useState(false);
 
+  // Fetch user data function
+  const fetchUserData = useCallback(async () => {
+    // Only run if the actor is available
+    if (!actor) return;
+
+    setIsLoading(true);
+    try {
+      const [fetchedLoans, fetchedBtcAddressResult] = await Promise.all([
+        actor.get_loans(),
+        actor.get_btc_address()
+      ]);
+      setLoans(fetchedLoans || []);
+      setBtcAddress(fetchedBtcAddressResult.length > 0 ? fetchedBtcAddressResult[0] : '');
+    } catch (error) {
+      console.error("Failed to fetch user data:", error);
+      toast.error("API mismatch. Could not fetch user data from the backend.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [actor]);
+
+  // Load data on mount and when actor changes
   useEffect(() => {
-    const fetchUserData = async () => {
-      // Only run if the actor is available
-      if (!actor) return;
+    if (isAuthenticated && actor) {
+      fetchUserData();
+    }
+  }, [isAuthenticated, actor, fetchUserData]);
 
-      setIsLoading(true);
-      try {
-        const [fetchedLoans, fetchedBtcAddressResult] = await Promise.all([
-          actor.get_loans(),
-          actor.get_btc_address()
-        ]);
-        setLoans(fetchedLoans || []);
-        setBtcAddress(fetchedBtcAddressResult.length > 0 ? fetchedBtcAddressResult[0] : '');
-      } catch (error) {
-        console.error("Failed to fetch user data:", error);
-        toast.error("API mismatch. Could not fetch user data from the backend.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Handle tab switching
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    // Trigger refresh when switching to a tab
+    if (tab === 'loans') {
+      setShouldRefreshLoans(true);
+    } else if (tab === 'escrow') {
+      setShouldRefreshEscrows(true);
+    }
+  };
 
-    fetchUserData();
-  }, [actor]); // The dependency array is now just [actor]
+  // Reset refresh flags after they're consumed
+  const handleLoansRefreshed = () => {
+    setShouldRefreshLoans(false);
+  };
+
+  const handleEscrowsRefreshed = () => {
+    setShouldRefreshEscrows(false);
+  };
 
   const handleBtcAddressLink = async (e) => {
     e.preventDefault();
@@ -50,6 +75,8 @@ function App() {
       await actor.link_btc_address(newAddress);
       setBtcAddress(newAddress);
       toast.success("Bitcoin address linked successfully!");
+      // Refresh data after linking
+      fetchUserData();
     }
   };
 
@@ -62,6 +89,20 @@ function App() {
     } finally {
       setIsConnecting(false);
     }
+  };
+
+  // Handle loan creation
+  const handleLoanCreated = () => {
+    toast.success("Loan created successfully!");
+    // Refresh data after creating a loan
+    fetchUserData();
+  };
+
+  // Handle escrow creation
+  const handleEscrowCreated = () => {
+    toast.success("Escrow created successfully!");
+    // Set flag to refresh escrows
+    setShouldRefreshEscrows(true);
   };
 
   // The landing page if not authenticated
@@ -176,14 +217,24 @@ function App() {
       {isModalOpen && 
         <CreateLoanModal 
           isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)} 
+          onClose={() => {
+            setIsModalOpen(false);
+            // Refresh data after modal closes
+            fetchUserData();
+          }}
+          onLoanCreated={handleLoanCreated}
         />
       }
       
       {isEscrowModalOpen && 
         <CreateEscrowModal 
           isOpen={isEscrowModalOpen}
-          onClose={() => setIsEscrowModalOpen(false)} 
+          onClose={() => {
+            setIsEscrowModalOpen(false);
+            // Set flag to refresh escrows
+            setShouldRefreshEscrows(true);
+          }}
+          onEscrowCreated={handleEscrowCreated}
         />
       }
       
@@ -195,13 +246,13 @@ function App() {
         <div className="nav-links">
           <button 
             className={`nav-tab ${activeTab === 'loans' ? 'active' : ''}`}
-            onClick={() => setActiveTab('loans')}
+            onClick={() => handleTabChange('loans')}
           >
             Loan Dashboard
           </button>
           <button 
             className={`nav-tab ${activeTab === 'escrow' ? 'active' : ''}`}
-            onClick={() => setActiveTab('escrow')}
+            onClick={() => handleTabChange('escrow')}
           >
             Escrow Dashboard
           </button>
@@ -216,13 +267,17 @@ function App() {
       <div className="app-content">
         {activeTab === 'loans' && (
           <Dashboard 
-            openLoanModal={() => setIsModalOpen(true)} 
+            openLoanModal={() => setIsModalOpen(true)}
+            shouldRefresh={shouldRefreshLoans}
+            onRefreshed={handleLoansRefreshed}
           />
         )}
         
         {activeTab === 'escrow' && (
           <EscrowDashboard 
-            openEscrowModal={() => setIsEscrowModalOpen(true)} 
+            openEscrowModal={() => setIsEscrowModalOpen(true)}
+            shouldRefresh={shouldRefreshEscrows}
+            onRefreshed={handleEscrowsRefreshed}
           />
         )}
       </div>

@@ -65,11 +65,6 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }) => {
     return Object.keys(errors).length === 0;
   };
 
-  // Convert to satoshis (multiply by 100,000,000 for 8 decimal places)
-  const toSatoshis = (amount) => {
-    return Math.floor(parseFloat(amount) * 100000000);
-  };
-
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -84,17 +79,17 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }) => {
     try {
       const actor = await getActor();
       
-      // Convert amounts to integers (satoshis)
-      const collateralSatoshis = toSatoshis(formData.collateralAmount);
-      const loanSatoshis = toSatoshis(formData.loanAmount);
+      // Use floating point values directly as the backend expects float64
+      const collateralAmount = parseFloat(formData.collateralAmount);
+      const loanAmount = parseFloat(formData.loanAmount);
       
       console.log('Creating loan with:', {
-        collateral: collateralSatoshis,
-        loan: loanSatoshis
+        collateral: collateralAmount,
+        loan: loanAmount
       });
       
-      // Call the backend canister
-      const result = await actor.create_loan(collateralSatoshis, loanSatoshis);
+      // Call the backend canister with float values
+      const result = await actor.create_loan(collateralAmount, loanAmount);
       
       console.log('Loan created successfully:', result);
       

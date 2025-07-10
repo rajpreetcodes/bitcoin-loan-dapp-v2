@@ -126,17 +126,10 @@ pub fn link_btc_address(address: String) -> Result<(), String> {
         return Err("Bitcoin address cannot be empty".to_string());
     }
 
-    // Enhanced Bitcoin address validation to support all formats
-    // This includes legacy (1...), SegWit (3...), Bech32 (bc1...) and Taproot (bc1p...)
-    if !(address.starts_with("1") || 
-         address.starts_with("3") || 
-         address.starts_with("bc1")) {
-        return Err("Invalid Bitcoin address format. Must start with 1, 3, or bc1".to_string());
-    }
-
-    // Allow longer addresses for newer formats like Taproot
-    if address.len() < 26 || address.len() > 100 {
-        return Err("Invalid Bitcoin address length".to_string());
+    // Enhanced Bitcoin address validation for different formats
+    let validation_result = validate_btc_address(&address);
+    if let Err(msg) = validation_result {
+        return Err(msg);
     }
 
     let owner = ic_cdk::caller();
@@ -148,6 +141,143 @@ pub fn link_btc_address(address: String) -> Result<(), String> {
         let mut users = p.borrow_mut();
         users.insert(owner, profile);
     });
+    
+    Ok(())
+}
+
+// Helper function to validate Bitcoin addresses
+fn validate_btc_address(address: &str) -> Result<(), String> {
+    // Basic format check
+    if address.trim().is_empty() {
+        return Err("Bitcoin address cannot be empty".to_string());
+    }
+
+    // Identify the address type
+    let address_type = identify_btc_address_type(address);
+    
+    match address_type {
+        BtcAddressType::Invalid => {
+            return Err("Invalid Bitcoin address format. Must be a valid BTC address".to_string());
+        },
+        _ => {
+            // Proceed with additional validation based on the address type
+            validate_address_by_type(address, address_type)
+        }
+    }
+}
+
+// Enum to represent different Bitcoin address types
+enum BtcAddressType {
+    Legacy,
+    ScriptHash,
+    Bech32,
+    Taproot,
+    TestnetLegacy,
+    TestnetScript,
+    TestnetBech32,
+    TestnetTaproot,
+    Invalid,
+}
+
+// Function to identify the Bitcoin address type
+fn identify_btc_address_type(address: &str) -> BtcAddressType {
+    // Check for empty address
+    if address.trim().is_empty() {
+        return BtcAddressType::Invalid;
+    }
+    
+    // Identify by prefix
+    if address.starts_with("1") {
+        BtcAddressType::Legacy
+    } else if address.starts_with("3") {
+        BtcAddressType::ScriptHash
+    } else if address.starts_with("bc1q") {
+        BtcAddressType::Bech32
+    } else if address.starts_with("bc1p") {
+        BtcAddressType::Taproot
+    } else if address.starts_with("m") || address.starts_with("n") {
+        BtcAddressType::TestnetLegacy
+    } else if address.starts_with("2") {
+        BtcAddressType::TestnetScript
+    } else if address.starts_with("tb1q") {
+        BtcAddressType::TestnetBech32
+    } else if address.starts_with("tb1p") {
+        BtcAddressType::TestnetTaproot
+    } else {
+        // Special case: Check if it's a bc1 address that doesn't follow the exact format
+        if address.starts_with("bc1") {
+            // If it starts with bc1 but not followed by 'q' or 'p', it's invalid
+            // This catches cases like "bc1snafas" which are invalid
+            return BtcAddressType::Invalid;
+        }
+        
+        BtcAddressType::Invalid
+    }
+}
+
+// Function to validate address based on its type
+fn validate_address_by_type(address: &str, address_type: BtcAddressType) -> Result<(), String> {
+    // Length validation based on format
+    let valid_length = match address_type {
+        BtcAddressType::Legacy | BtcAddressType::ScriptHash | 
+        BtcAddressType::TestnetLegacy | BtcAddressType::TestnetScript => {
+            // Legacy or P2SH (mainnet or testnet)
+            address.len() >= 26 && address.len() <= 34
+        },
+        BtcAddressType::Bech32 | BtcAddressType::TestnetBech32 => {
+            // Bech32 SegWit (mainnet or testnet)
+            address.len() >= 42 && address.len() <= 62
+        },
+        BtcAddressType::Taproot | BtcAddressType::TestnetTaproot => {
+            // Taproot (mainnet or testnet)
+            address.len() >= 62 && address.len() <= 64
+        },
+        BtcAddressType::Invalid => false,
+    };
+
+    if !valid_length {
+        return Err("Invalid Bitcoin address length for the given format".to_string());
+    }
+
+    // Character set validation
+    let valid_chars = match address_type {
+        BtcAddressType::Legacy | BtcAddressType::ScriptHash | 
+        BtcAddressType::TestnetLegacy | BtcAddressType::TestnetScript => {
+            // Base58 character set for legacy addresses
+            address.chars().all(|c| "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz".contains(c))
+        },
+        BtcAddressType::Bech32 | BtcAddressType::Taproot | 
+        BtcAddressType::TestnetBech32 | BtcAddressType::TestnetTaproot => {
+            // Bech32 character set
+            address.chars().all(|c| "0123456789abcdefghijklmnopqrstuvwxyz".contains(c))
+        },
+        BtcAddressType::Invalid => false,
+    };
+
+    if !valid_chars {
+        return Err("Bitcoin address contains invalid characters".to_string());
+    }
+
+    // Additional validation for Bech32 addresses
+    match address_type {
+        BtcAddressType::Bech32 | BtcAddressType::TestnetBech32 | 
+        BtcAddressType::Taproot | BtcAddressType::TestnetTaproot => {
+            // Bech32 addresses must have a 1 as the separator after the human-readable part
+            if !address.contains('1') {
+                return Err("Invalid Bech32 address format: missing separator".to_string());
+            }
+            
+            // For bc1 addresses, the format should be bc1 + separator + data part
+            // The data part should be at least 6 characters
+            let parts: Vec<&str> = address.split('1').collect();
+            if parts.len() < 2 || parts[1].len() < 6 {
+                return Err("Invalid Bech32 address format: data part too short".to_string());
+            }
+        },
+        _ => {}
+    }
+
+    // Note: For production, consider adding checksum validation or using a Bitcoin library
     
     Ok(())
 }

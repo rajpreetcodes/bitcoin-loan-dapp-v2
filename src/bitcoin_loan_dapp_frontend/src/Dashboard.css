@@ -263,6 +263,7 @@
   text-transform: uppercase;
 }
 
+/* Status colors for loans */
 .status-active {
   background-color: #dcfce7;
   color: #15803d;
@@ -281,6 +282,27 @@
 .status-defaulted {
   background-color: #fee2e2;
   color: #b91c1c;
+}
+
+.status-unknown {
+  background-color: #e2e8f0;
+  color: #64748b;
+}
+
+/* Status colors for escrows */
+.status-locked {
+  background-color: #06d6a0;
+  color: #00573f;
+}
+
+.status-released {
+  background-color: #118ab2;
+  color: #ffffff;
+}
+
+.status-refunded {
+  background-color: #ef476f;
+  color: #ffffff;
 }
 
 .loan-details {
@@ -307,6 +329,103 @@
   display: flex;
   gap: 0.75rem;
   margin-top: 1rem;
+}
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #334155;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.form-text {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.form-note {
+  background-color: #f8fafc;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+  color: #475569;
+}
+
+.form-stats {
+  margin-bottom: 1.5rem;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.stat-label {
+  font-weight: 500;
+  color: #334155;
+}
+
+.form-error {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+}
+
+.form-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.primary-button, .secondary-button {
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.primary-button {
+  background-color: #3498db;
+  color: white;
+}
+
+.secondary-button {
+  background-color: #e2e8f0;
+  color: #475569;
+}
+
+.primary-button:hover, .secondary-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.primary-button:disabled, .secondary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* Empty State */

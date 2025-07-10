@@ -1,95 +1,80 @@
 import React, { useState } from 'react';
-import { useAuth } from './context/AuthContext';
 import { createEscrow } from './escrow-agent';
-import './CreateLoanModal.css'; // Reuse the existing modal styles
+import './CreateLoanModal.css';
+import { Principal } from '@dfinity/principal';
 
-export const CreateEscrowModal = ({ isOpen, onClose }) => {
-  const { userPrincipal } = useAuth();
+export const CreateEscrowModal = ({ isOpen, onClose, onEscrowCreated }) => {
   const [lenderPrincipal, setLenderPrincipal] = useState('');
   const [btcAddress, setBtcAddress] = useState('');
   const [collateralAmount, setCollateralAmount] = useState('');
   const [loanAmount, setLoanAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [ltvRatio, setLtvRatio] = useState('N/A');
 
-  if (!isOpen) return null;
-
-  // Calculate LTV ratio
-  const calculateLtv = () => {
-    if (!collateralAmount || !loanAmount) return 'N/A';
-    const ltv = (parseFloat(loanAmount) / parseFloat(collateralAmount)) * 100;
+  // Calculate LTV ratio when collateral or loan amount changes
+  const calculateLTV = (loan, collateral) => {
+    if (!loan || !collateral || parseFloat(collateral) === 0) {
+      return 'N/A';
+    }
+    const ltv = (parseFloat(loan) / parseFloat(collateral)) * 100;
     return ltv.toFixed(2) + '%';
   };
 
+  // Update LTV when values change
+  React.useEffect(() => {
+    setLtvRatio(calculateLTV(loanAmount, collateralAmount));
+  }, [loanAmount, collateralAmount]);
+
+  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Input validation
-    if (!lenderPrincipal || !btcAddress || !collateralAmount || !loanAmount) {
-      setError('Please fill in all fields');
+    // Validate inputs
+    if (!lenderPrincipal.trim()) {
+      setError('Lender Principal ID is required');
       return;
     }
-
-    // Validate principal ID format
-    if (!lenderPrincipal.match(/^[a-zA-Z0-9-]+$/)) {
-      setError('Invalid principal ID format');
+    
+    if (!btcAddress.trim()) {
+      setError('Bitcoin Collateral Address is required');
       return;
     }
-
-    // Validate Bitcoin address
-    const bitcoinAddressRegex = /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$|^bc1[a-zA-Z0-9]{8,100}$/;
-    if (!bitcoinAddressRegex.test(btcAddress.trim())) {
-      setError('Please enter a valid Bitcoin address (starting with 1, 3, or bc1)');
+    
+    if (!collateralAmount || parseFloat(collateralAmount) <= 0) {
+      setError('Collateral Amount must be greater than 0');
       return;
     }
-
-    const collateralValue = parseFloat(collateralAmount);
-    const loanValue = parseFloat(loanAmount);
-
-    if (isNaN(collateralValue) || isNaN(loanValue)) {
-      setError('Please enter valid numbers');
+    
+    if (!loanAmount || parseFloat(loanAmount) <= 0) {
+      setError('Loan Amount must be greater than 0');
       return;
     }
-
-    if (collateralValue <= 0 || loanValue <= 0) {
-      setError('Values must be greater than zero');
+    
+    // Validate Principal format
+    try {
+      Principal.fromText(lenderPrincipal.trim());
+    } catch (err) {
+      setError('Invalid Principal ID format');
       return;
     }
-
-    // Simple LTV validation (can be adjusted based on business rules)
-    const ltv = loanValue / collateralValue;
-    if (ltv > 0.7) {
-      setError('Loan-to-value ratio is too high. Maximum LTV is 70%.');
-      return;
-    }
-
+    
     setIsSubmitting(true);
     setError('');
-    setSuccess('');
-
+    
     try {
       const result = await createEscrow(
-        lenderPrincipal,
-        btcAddress,
-        collateralValue,
-        loanValue
+        lenderPrincipal.trim(),
+        btcAddress.trim(),
+        parseFloat(collateralAmount),
+        parseFloat(loanAmount)
       );
       
       if ('Ok' in result) {
-        setSuccess(`Escrow created successfully with ID: ${result.Ok}`);
-        console.log("Escrow created:", result.Ok);
-        
-        // Reset form
-        setLenderPrincipal('');
-        setBtcAddress('');
-        setCollateralAmount('');
-        setLoanAmount('');
-        
-        // Close modal after a delay
-        setTimeout(() => {
-          onClose();
-        }, 2000);
+        if (onEscrowCreated) {
+          onEscrowCreated(result.Ok);
+        }
+        onClose();
       } else if ('Err' in result) {
         setError(`Failed to create escrow: ${result.Err}`);
       }
@@ -101,6 +86,16 @@ export const CreateEscrowModal = ({ isOpen, onClose }) => {
     }
   };
 
+  // Set sample values for demonstration
+  const fillSampleValues = () => {
+    setLenderPrincipal('rrkah-fqaaa-aaaaa-aaaaq-cai');
+    setBtcAddress('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh');
+    setCollateralAmount('0.1');
+    setLoanAmount('0.05');
+  };
+
+  if (!isOpen) return null;
+
   return (
     <div className="modal-overlay">
       <div className="modal-content">
@@ -110,20 +105,16 @@ export const CreateEscrowModal = ({ isOpen, onClose }) => {
         </div>
         
         <form onSubmit={handleSubmit}>
-          {error && <div className="error-message">{error}</div>}
-          {success && <div className="success-message">{success}</div>}
-          
           <div className="form-group">
             <label htmlFor="lenderPrincipal">Lender Principal ID</label>
             <input
               type="text"
               id="lenderPrincipal"
+              placeholder="e.g., rrkah-fqaaa-aaaaa-aaaaq-cai"
               value={lenderPrincipal}
               onChange={(e) => setLenderPrincipal(e.target.value)}
-              placeholder="e.g., abc123-def456-ghi789"
-              disabled={isSubmitting}
             />
-            <small>The principal ID of the lender who will provide the loan</small>
+            <small className="form-text">The principal ID of the lender who will manage the loan.</small>
           </div>
           
           <div className="form-group">
@@ -131,12 +122,11 @@ export const CreateEscrowModal = ({ isOpen, onClose }) => {
             <input
               type="text"
               id="btcAddress"
+              placeholder="e.g., bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"
               value={btcAddress}
               onChange={(e) => setBtcAddress(e.target.value)}
-              placeholder="e.g., 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
-              disabled={isSubmitting}
             />
-            <small>The Bitcoin address where collateral will be sent</small>
+            <small className="form-text">The Bitcoin address where collateral will be sent.</small>
           </div>
           
           <div className="form-group">
@@ -144,12 +134,11 @@ export const CreateEscrowModal = ({ isOpen, onClose }) => {
             <input
               type="number"
               id="collateralAmount"
+              placeholder="e.g., 0.1"
+              min="0.001"
+              step="0.001"
               value={collateralAmount}
               onChange={(e) => setCollateralAmount(e.target.value)}
-              placeholder="e.g., 0.1"
-              step="0.00000001"
-              min="0"
-              disabled={isSubmitting}
             />
           </div>
           
@@ -158,40 +147,48 @@ export const CreateEscrowModal = ({ isOpen, onClose }) => {
             <input
               type="number"
               id="loanAmount"
+              placeholder="e.g., 0.05"
+              min="0.001"
+              step="0.001"
               value={loanAmount}
               onChange={(e) => setLoanAmount(e.target.value)}
-              placeholder="e.g., 0.05"
-              step="0.00000001"
-              min="0"
-              disabled={isSubmitting}
             />
           </div>
           
-          <div className="loan-info">
-            <p>
-              <strong>Note:</strong> This creates an escrow agreement between you (borrower) and the lender.
-              The lender will need to lock the escrow once they've verified your Bitcoin collateral.
-            </p>
-            <p>
-              <strong>LTV Ratio:</strong> {calculateLtv()}
-            </p>
+          <div className="form-note">
+            <strong>Note:</strong> This creates an escrow agreement between you (borrower) and the lender. The lender will need to lock the escrow once they've verified your Bitcoin collateral.
           </div>
           
-          <div className="form-footer">
+          <div className="form-stats">
+            <div className="stat-item">
+              <span className="stat-label">LTV Ratio:</span>
+              <span className="stat-value">{ltvRatio}</span>
+            </div>
+          </div>
+          
+          {error && <div className="form-error">{error}</div>}
+          
+          <div className="form-buttons">
             <button 
               type="button" 
-              className="cancel-button"
+              className="secondary-button" 
+              onClick={fillSampleValues}
+            >
+              Fill Sample Values
+            </button>
+            <button 
+              type="button" 
+              className="secondary-button" 
               onClick={onClose}
-              disabled={isSubmitting}
             >
               Cancel
             </button>
             <button 
               type="submit" 
-              className="submit-button"
+              className="primary-button"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Creating...' : 'Create Escrow'}
+              {isSubmitting ? 'Creating Escrow...' : 'Create Escrow'}
             </button>
           </div>
         </form>

@@ -15,10 +15,39 @@ export const AuthProvider = ({ children }) => {
     const [isPlugConnected, setIsPlugConnected] = useState(false);
     const [actor, setActor] = useState(null); // A single actor state
 
+    // Function to clear authentication state
+    const clearAuthState = async (client) => {
+        if (client) {
+            await client.logout();
+        }
+        if (window.ic?.plug?.isConnected()) {
+            await window.ic.plug.disconnect();
+        }
+        setActor(null);
+        setIsAuthenticated(false);
+        setUserPrincipal(null);
+        setIsPlugConnected(false);
+        
+        // Clear any local storage items related to authentication
+        localStorage.removeItem('ic-delegation');
+        localStorage.removeItem('ic-identity');
+        
+        console.log("Authentication state cleared");
+    };
+
     useEffect(() => {
         AuthClient.create().then(async (client) => {
             setAuthClient(client);
-            if (await client.isAuthenticated()) {
+            
+            // Check for a URL parameter that indicates we should clear auth state
+            const urlParams = new URLSearchParams(window.location.search);
+            const clearAuth = urlParams.get('clearAuth');
+            
+            if (clearAuth === 'true') {
+                await clearAuthState(client);
+                // Remove the parameter from URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } else if (await client.isAuthenticated()) {
                 handleAuthenticated(client);
             }
         });
@@ -48,15 +77,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = async () => {
-        await authClient?.logout();
-        // Also disconnect plug if it was connected
-        if (window.ic?.plug?.isConnected()) {
-            await window.ic.plug.disconnect();
-        }
-        setActor(null);
-        setIsAuthenticated(false);
-        setUserPrincipal(null);
-        setIsPlugConnected(false);
+        await clearAuthState(authClient);
     };
 
     const connectPlug = async () => {
@@ -104,7 +125,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ login, logout, connectPlug, isAuthenticated, isPlugConnected, actor, userPrincipal }}>
+        <AuthContext.Provider value={{ login, logout, connectPlug, clearAuthState, isAuthenticated, isPlugConnected, actor, userPrincipal }}>
             {children}
         </AuthContext.Provider>
     );

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import './Dashboard.css';
 
-const Dashboard = ({ openLoanModal }) => {
+const Dashboard = ({ openLoanModal, shouldRefresh, onRefreshed }) => {
   const { actor, userPrincipal } = useAuth();
   const [loans, setLoans] = useState([]);
   const [btcAddress, setBtcAddress] = useState('');
@@ -11,31 +11,40 @@ const Dashboard = ({ openLoanModal }) => {
   const [success, setSuccess] = useState('');
 
   // Load loans and BTC address
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!actor) return;
+  const fetchData = async () => {
+    if (!actor) return;
+    
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const [fetchedLoans, fetchedBtcAddressResult] = await Promise.all([
+        actor.get_loans(),
+        actor.get_btc_address()
+      ]);
       
-      setIsLoading(true);
-      setError('');
-      
-      try {
-        const [fetchedLoans, fetchedBtcAddressResult] = await Promise.all([
-          actor.get_loans(),
-          actor.get_btc_address()
-        ]);
-        
-        setLoans(fetchedLoans || []);
-        setBtcAddress(fetchedBtcAddressResult.length > 0 ? fetchedBtcAddressResult[0] : '');
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-        setError("Failed to load data. Please try again.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      setLoans(fetchedLoans || []);
+      setBtcAddress(fetchedBtcAddressResult.length > 0 ? fetchedBtcAddressResult[0] : '');
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+      setError("Failed to load data. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  // Load data on mount and when actor changes
+  useEffect(() => {
     fetchData();
   }, [actor]);
+
+  // Handle refresh when shouldRefresh prop changes
+  useEffect(() => {
+    if (shouldRefresh) {
+      fetchData();
+      if (onRefreshed) onRefreshed();
+    }
+  }, [shouldRefresh, onRefreshed]);
 
   // Handle BTC address linking
   const handleBtcAddressLink = async (e) => {
@@ -52,13 +61,37 @@ const Dashboard = ({ openLoanModal }) => {
     setSuccess('');
     
     try {
-      await actor.link_btc_address(newAddress);
+      // Call the backend to link the address
+      const result = await actor.link_btc_address(newAddress);
+      
+      // Handle the result - in Rust, this is a Result<(), String>
+      // If it's successful, the result will be an object with an Ok property
+      // If it failed, it will be an object with an Err property containing the error message
+      if ('Err' in result) {
+        // Extract the error message from the Result
+        const errorMessage = result.Err;
+        console.error("Bitcoin address validation failed:", errorMessage);
+        setError(`Invalid Bitcoin address: ${errorMessage}`);
+        return;
+      }
+      
+      // If we get here, the address was successfully linked
       setBtcAddress(newAddress);
       setSuccess("Bitcoin address linked successfully!");
       e.target.reset();
+      // Refresh data after linking
+      fetchData();
     } catch (error) {
       console.error("Failed to link BTC address:", error);
-      setError("Failed to link Bitcoin address. Please try again.");
+      // Check if the error message contains validation information
+      const errorMsg = error.message || "";
+      if (errorMsg.includes("Invalid Bitcoin address") || 
+          errorMsg.includes("Bitcoin address") || 
+          errorMsg.includes("address format")) {
+        setError(`Invalid Bitcoin address: ${errorMsg}`);
+      } else {
+        setError("Failed to link Bitcoin address. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -70,10 +103,18 @@ const Dashboard = ({ openLoanModal }) => {
     setSuccess('');
   };
 
+  // Helper function to get loan status display
+  const getLoanStatusDisplay = (loan) => {
+    if (!loan || !loan.status) return { text: 'Active', class: 'status-active' };
+    
+    const status = loan.status.toLowerCase ? loan.status.toLowerCase() : 'active';
+    return { text: loan.status || 'Active', class: `status-${status}` };
+  };
+
   // Calculate stats
   const totalLoans = loans.length;
-  const totalBorrowed = loans.reduce((acc, loan) => acc + Number(loan.loan_amount), 0);
-  const totalCollateral = loans.reduce((acc, loan) => acc + Number(loan.collateral_amount), 0);
+  const totalBorrowed = loans.reduce((acc, loan) => acc + Number(loan.loan_amount || 0), 0);
+  const totalCollateral = loans.reduce((acc, loan) => acc + Number(loan.collateral_amount || 0), 0);
 
   return (
     <div className="dashboard-content">
@@ -183,7 +224,11 @@ const Dashboard = ({ openLoanModal }) => {
               <h4>+ Create New Loan</h4>
               <p>Start a new Bitcoin-backed loan.</p>
               <button 
-                onClick={openLoanModal}
+                onClick={() => {
+                  openLoanModal();
+                  // Set a timeout to refresh data after modal interaction
+                  setTimeout(fetchData, 2000);
+                }}
                 className="action-button primary"
               >
                 Create Loan
@@ -191,10 +236,14 @@ const Dashboard = ({ openLoanModal }) => {
             </div>
 
             <div className="action-card">
-              <h4>View Loan History</h4>
-              <p>See your past loan transactions.</p>
-              <button className="action-button secondary">
-                View History
+              <h4>Refresh Data</h4>
+              <p>Update your loan information.</p>
+              <button 
+                className="action-button secondary"
+                onClick={fetchData}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Refreshing...' : 'Refresh Data'}
               </button>
             </div>
           </div>
@@ -209,7 +258,11 @@ const Dashboard = ({ openLoanModal }) => {
             <div className="empty-state">
               <p>You don't have any active loans.</p>
               <button 
-                onClick={openLoanModal}
+                onClick={() => {
+                  openLoanModal();
+                  // Set a timeout to refresh data after modal interaction
+                  setTimeout(fetchData, 2000);
+                }}
                 className="action-button primary"
               >
                 Create Your First Loan
@@ -217,42 +270,45 @@ const Dashboard = ({ openLoanModal }) => {
             </div>
           ) : (
             <div className="loans-grid">
-              {loans.map((loan) => (
-                <div key={loan.id} className="loan-card">
-                  <div className="loan-header">
-                    <h4>Loan #{loan.id}</h4>
-                    <span className={`loan-status status-${loan.status.toLowerCase()}`}>
-                      {loan.status}
-                    </span>
-                  </div>
-                  <div className="loan-details">
-                    <div className="loan-detail">
-                      <span className="label">Loan Amount:</span>
-                      <span className="value">{Number(loan.loan_amount).toFixed(8)} ckBTC</span>
-                    </div>
-                    <div className="loan-detail">
-                      <span className="label">Collateral:</span>
-                      <span className="value">{Number(loan.collateral_amount).toFixed(8)} BTC</span>
-                    </div>
-                    <div className="loan-detail">
-                      <span className="label">Created:</span>
-                      <span className="value">
-                        {new Date(Number(loan.created_at) / 1000000).toLocaleDateString()}
+              {loans.map((loan) => {
+                const statusDisplay = getLoanStatusDisplay(loan);
+                return (
+                  <div key={loan.id} className="loan-card">
+                    <div className="loan-header">
+                      <h4>Loan #{loan.id}</h4>
+                      <span className={`loan-status ${statusDisplay.class}`}>
+                        {statusDisplay.text || 'Active'}
                       </span>
                     </div>
-                    <div className="loan-detail">
-                      <span className="label">Repay By:</span>
-                      <span className="value">
-                        {loan.due_date ? new Date(Number(loan.due_date) / 1000000).toLocaleDateString() : 'N/A'}
-                      </span>
+                    <div className="loan-details">
+                      <div className="loan-detail">
+                        <span className="label">Loan Amount:</span>
+                        <span className="value">{Number(loan.loan_amount || 0).toFixed(8)} ckBTC</span>
+                      </div>
+                      <div className="loan-detail">
+                        <span className="label">Collateral:</span>
+                        <span className="value">{Number(loan.collateral_amount || 0).toFixed(8)} BTC</span>
+                      </div>
+                      <div className="loan-detail">
+                        <span className="label">Created:</span>
+                        <span className="value">
+                          {loan.created_at ? new Date(Number(loan.created_at) / 1000000).toLocaleDateString() : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="loan-detail">
+                        <span className="label">Repay By:</span>
+                        <span className="value">
+                          {loan.due_date ? new Date(Number(loan.due_date) / 1000000).toLocaleDateString() : 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="loan-actions">
+                      <button className="action-button primary">View Details</button>
+                      <button className="action-button secondary">Repay Loan</button>
                     </div>
                   </div>
-                  <div className="loan-actions">
-                    <button className="action-button primary">View Details</button>
-                    <button className="action-button secondary">Repay Loan</button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>

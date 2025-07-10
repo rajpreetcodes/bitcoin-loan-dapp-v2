@@ -183,10 +183,10 @@ FRONTEND_ID=$(dfx canister id ${PROJECT_NAME}_frontend --network $NETWORK)
 if [ "$NETWORK" = "local" ]; then
     LOCAL_HOST="http://127.0.0.1:4943"
     BACKEND_URL="${LOCAL_HOST}/?canisterId=${BACKEND_ID}"
-    FRONTEND_URL="${LOCAL_HOST}/?canisterId=${FRONTEND_ID}"
+    FRONTEND_URL="${LOCAL_HOST}/?canisterId=${FRONTEND_ID}&clearAuth=true"
 else
     BACKEND_URL="https://${BACKEND_ID}.ic0.app"
-    FRONTEND_URL="https://${FRONTEND_ID}.ic0.app"
+    FRONTEND_URL="https://${FRONTEND_ID}.ic0.app/?clearAuth=true"
 fi
 
 # Test backend connection
@@ -248,14 +248,16 @@ Canister IDs:
 Access URLs:
 - Backend: $BACKEND_URL
 - Frontend: $FRONTEND_URL
-
-DFX Commands:
-- Stop: dfx stop
-- Start: dfx start --clean --background
-- Status: dfx canister status --all --network $NETWORK
-- Logs: dfx logs --network $NETWORK
-- Redeploy: ./deploy.sh $NETWORK
 EOF
+
+# Add authentication clearing instructions
+echo ""
+echo -e "${YELLOW}⚠️ IMPORTANT: Authentication Notice${NC}"
+echo -e "${YELLOW}To ensure you see the login page after redeployment:${NC}"
+echo -e "${YELLOW}1. Clear your browser cache and cookies for this domain${NC}"
+echo -e "${YELLOW}2. Or use an incognito/private browser window${NC}"
+echo -e "${YELLOW}3. Or click the 'Logout' button before redeploying${NC}"
+echo ""
 
 print_status "Deployment information saved to deployment-info.txt"
 echo ""

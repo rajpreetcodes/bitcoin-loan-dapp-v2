@@ -11,7 +11,7 @@ import { CreateEscrowModal } from './CreateEscrowModal';
 import './Dashboard.css'; // Reuse dashboard styles
 import './EscrowDashboard.css'; // Escrow-specific styles
 
-const EscrowDashboard = ({ openEscrowModal }) => {
+const EscrowDashboard = ({ openEscrowModal, shouldRefresh, onRefreshed }) => {
   const { isAuthenticated, userPrincipal } = useAuth();
   const [borrowerEscrows, setBorrowerEscrows] = useState([]);
   const [lenderEscrows, setLenderEscrows] = useState([]);
@@ -47,6 +47,14 @@ const EscrowDashboard = ({ openEscrowModal }) => {
       fetchEscrowData();
     }
   }, [isAuthenticated]);
+  
+  // Handle refresh when shouldRefresh prop changes
+  useEffect(() => {
+    if (shouldRefresh) {
+      fetchEscrowData();
+      if (onRefreshed) onRefreshed();
+    }
+  }, [shouldRefresh, onRefreshed]);
   
   // Handle escrow actions
   const handleLockEscrow = async (escrowId) => {
@@ -114,6 +122,7 @@ const EscrowDashboard = ({ openEscrowModal }) => {
   
   // Helper function to get status display
   const getStatusDisplay = (status) => {
+    if (!status) return { text: 'Pending', class: 'status-pending' };
     if ('Pending' in status) return { text: 'Pending', class: 'status-pending' };
     if ('Locked' in status) return { text: 'Locked', class: 'status-locked' };
     if ('Released' in status) return { text: 'Released', class: 'status-released' };
@@ -130,9 +139,9 @@ const EscrowDashboard = ({ openEscrowModal }) => {
   // Calculate stats
   const totalEscrows = borrowerEscrows.length + lenderEscrows.length;
   const totalCollateral = [...borrowerEscrows, ...lenderEscrows]
-    .reduce((acc, escrow) => acc + Number(escrow.collateral_amount), 0);
+    .reduce((acc, escrow) => acc + Number(escrow.collateral_amount || 0), 0);
   const totalLoans = [...borrowerEscrows, ...lenderEscrows]
-    .reduce((acc, escrow) => acc + Number(escrow.loan_amount), 0);
+    .reduce((acc, escrow) => acc + Number(escrow.loan_amount || 0), 0);
   
   return (
     <div className="dashboard-content">
@@ -254,27 +263,27 @@ const EscrowDashboard = ({ openEscrowModal }) => {
                     <div className="loan-details">
                       <div className="loan-detail">
                         <span className="label">Loan Amount:</span>
-                        <span className="value">{Number(escrow.loan_amount).toFixed(8)} ckBTC</span>
+                        <span className="value">{Number(escrow.loan_amount || 0).toFixed(8)} ckBTC</span>
                       </div>
                       <div className="loan-detail">
                         <span className="label">Collateral:</span>
-                        <span className="value">{Number(escrow.collateral_amount).toFixed(8)} BTC</span>
+                        <span className="value">{Number(escrow.collateral_amount || 0).toFixed(8)} BTC</span>
                       </div>
                       <div className="loan-detail">
                         <span className="label">Created:</span>
                         <span className="value">
-                          {new Date(Number(escrow.created_at) / 1000000).toLocaleDateString()}
+                          {escrow.created_at ? new Date(Number(escrow.created_at) / 1000000).toLocaleDateString() : 'N/A'}
                         </span>
                       </div>
                       <div className="loan-detail">
                         <span className="label">BTC Address:</span>
                         <span className="value">
-                          {escrow.btc_collateral_address.substring(0, 8)}...
+                          {escrow.btc_collateral_address ? escrow.btc_collateral_address.substring(0, 8) + '...' : 'N/A'}
                         </span>
                       </div>
                     </div>
                     <div className="loan-actions">
-                      {('Locked' in escrow.status) && (
+                      {escrow.status && ('Locked' in escrow.status) && (
                         <button 
                           onClick={() => handleReleaseEscrow(escrow.id)}
                           disabled={isLoading}
@@ -315,27 +324,27 @@ const EscrowDashboard = ({ openEscrowModal }) => {
                     <div className="loan-details">
                       <div className="loan-detail">
                         <span className="label">Loan Amount:</span>
-                        <span className="value">{Number(escrow.loan_amount).toFixed(8)} ckBTC</span>
+                        <span className="value">{Number(escrow.loan_amount || 0).toFixed(8)} ckBTC</span>
                       </div>
                       <div className="loan-detail">
                         <span className="label">Collateral:</span>
-                        <span className="value">{Number(escrow.collateral_amount).toFixed(8)} BTC</span>
+                        <span className="value">{Number(escrow.collateral_amount || 0).toFixed(8)} BTC</span>
                       </div>
                       <div className="loan-detail">
                         <span className="label">Created:</span>
                         <span className="value">
-                          {new Date(Number(escrow.created_at) / 1000000).toLocaleDateString()}
+                          {escrow.created_at ? new Date(Number(escrow.created_at) / 1000000).toLocaleDateString() : 'N/A'}
                         </span>
                       </div>
                       <div className="loan-detail">
                         <span className="label">BTC Address:</span>
                         <span className="value">
-                          {escrow.btc_collateral_address.substring(0, 8)}...
+                          {escrow.btc_collateral_address ? escrow.btc_collateral_address.substring(0, 8) + '...' : 'N/A'}
                         </span>
                       </div>
                     </div>
                     <div className="loan-actions">
-                      {('Pending' in escrow.status) && (
+                      {escrow.status && ('Pending' in escrow.status) && (
                         <button 
                           onClick={() => handleLockEscrow(escrow.id)}
                           disabled={isLoading}
@@ -344,7 +353,7 @@ const EscrowDashboard = ({ openEscrowModal }) => {
                           Lock Escrow
                         </button>
                       )}
-                      {('Locked' in escrow.status) && (
+                      {escrow.status && ('Locked' in escrow.status) && (
                         <button 
                           onClick={() => handleRefundEscrow(escrow.id)}
                           disabled={isLoading}
