@@ -1,4 +1,4 @@
-/* CreateLoanModal CSS - Modern Modal Design */
+/* CreateLoanModal CSS - Dark Theme to Match Dashboard */
 
 /* Modal Overlay */
 .modal-overlay {
@@ -18,37 +18,24 @@
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* Modal Container */
-.modal-container {
-  background: #1a1a1a;
-  border: 1px solid #333333;
-  border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  max-width: 500px;
+/* Modal Content */
+.modal-content {
+  background: #1e1e2e;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
+  max-width: 550px;
+  overflow: hidden;
   animation: slideUp 0.3s ease;
-  position: relative;
 }
 
 @keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Modal Header */
@@ -56,371 +43,168 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 2rem 2rem 1rem 2rem;
-  border-bottom: 1px solid #333333;
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
 }
 
-.modal-title {
-  font-size: 1.5rem;
-  font-weight: 700;
+.modal-header h2 {
   margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
   color: #ffffff;
-  background: linear-gradient(135deg, #ff6b35 0%, #ff8a50 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
-.modal-close-button {
+.close-button {
   background: none;
   border: none;
-  color: #b0b0b0;
+  color: #ffffff;
   font-size: 1.5rem;
   cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  padding: 0.25rem;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
+  transition: background-color 0.2s;
 }
 
-.modal-close-button:hover:not(:disabled) {
-  background: #333333;
-  color: #ffffff;
-}
-
-.modal-close-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Modal Body */
-.modal-body {
-  padding: 2rem;
-}
-
-.modal-description {
-  color: #b0b0b0;
-  margin: 0 0 2rem 0;
-  line-height: 1.6;
-  font-size: 0.95rem;
+.close-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Form Styles */
-.loan-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+form {
+  padding: 1.5rem;
 }
 
 .form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  margin-bottom: 1.5rem;
 }
 
-.form-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: 600;
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
   color: #ffffff;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.currency-label {
-  background: #333333;
-  color: #b0b0b0;
-  padding: 0.25rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.8rem;
   font-weight: 500;
 }
 
-.form-input {
-  background: #252525;
-  border: 2px solid #333333;
-  border-radius: 12px;
-  padding: 1rem 1.25rem;
+.form-group input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
   color: #ffffff;
-  font-size: 1.1rem;
-  font-family: 'Courier New', monospace;
-  transition: all 0.3s ease;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus {
   outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
 }
 
-.form-input:focus {
-  border-color: #ff6b35;
-  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+/* Loan Info Section */
+.loan-info {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.form-input.error {
-  border-color: #ef4444;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-}
-
-.form-input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.form-input::placeholder {
-  color: #777777;
-}
-
-/* Error Message */
-.error-message {
-  color: #ef4444;
-  font-size: 0.85rem;
-  margin-top: 0.25rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.error-message::before {
-  content: '⚠️';
-  font-size: 0.8rem;
-}
-
-/* LTV Display */
-.ltv-display {
-  background: #252525;
-  border: 1px solid #333333;
-  border-radius: 12px;
-  padding: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.ltv-label {
-  color: #b0b0b0;
-  font-weight: 500;
+.loan-info p {
+  margin: 0.5rem 0;
+  color: #a0aec0;
+  line-height: 1.5;
   font-size: 0.9rem;
 }
 
-.ltv-value {
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: #34a853;
+.loan-info strong {
+  color: #ffffff;
+  font-weight: 600;
 }
 
-.ltv-value.high {
-  color: #ff6b35;
-}
-
-/* Error Banner */
-.error-banner {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid #ef4444;
-  border-radius: 12px;
-  padding: 1rem;
+/* Form Footer */
+.form-footer {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: #ef4444;
-}
-
-.error-icon {
-  font-size: 1.2rem;
-}
-
-.error-text {
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-
-/* Form Actions */
-.form-actions {
-  display: flex;
+  justify-content: flex-end;
   gap: 1rem;
-  margin-top: 1rem;
+  margin-top: 1.5rem;
 }
 
 .cancel-button {
-  flex: 1;
+  padding: 0.75rem 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
   background: transparent;
-  border: 2px solid #333333;
-  color: #b0b0b0;
-  padding: 1rem 1.5rem;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
+  color: #ffffff;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background-color 0.2s;
 }
 
 .cancel-button:hover:not(:disabled) {
-  border-color: #666666;
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.cancel-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .submit-button {
-  flex: 2;
-  background: linear-gradient(135deg, #ff6b35 0%, #ff8a50 100%);
+  padding: 0.75rem 1.5rem;
   border: none;
-  color: white;
-  padding: 1rem 1.5rem;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 700;
+  border-radius: 8px;
+  background: #3b82f6;
+  color: #ffffff;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  position: relative;
-  overflow: hidden;
-}
-
-.submit-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s ease;
-}
-
-.submit-button:hover:not(:disabled)::before {
-  left: 100%;
+  transition: background-color 0.2s;
 }
 
 .submit-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(255, 107, 53, 0.3);
+  background: #2563eb;
 }
 
-.submit-button:disabled {
+.submit-button:disabled,
+.cancel-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-  transform: none;
 }
 
-/* Loading Spinner */
-.loading-spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top: 2px solid white;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+/* Error and Success Messages */
+.error-message {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+.success-message {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: #4ade80;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
-/* Responsive Design */
+/* Responsive Adjustments */
 @media (max-width: 640px) {
-  .modal-container {
-    margin: 1rem;
-    border-radius: 12px;
+  .modal-content {
+    max-width: 100%;
+    margin: 0 1rem;
   }
   
-  .modal-header {
-    padding: 1.5rem 1.5rem 1rem 1.5rem;
-  }
-  
-  .modal-body {
-    padding: 1.5rem;
-  }
-  
-  .modal-title {
-    font-size: 1.25rem;
-  }
-  
-  .form-actions {
+  .form-footer {
     flex-direction: column;
   }
   
   .cancel-button,
   .submit-button {
-    flex: none;
-  }
-}
-
-@media (max-width: 480px) {
-  .modal-overlay {
-    padding: 0.5rem;
-  }
-  
-  .modal-header {
-    padding: 1rem 1rem 0.75rem 1rem;
-  }
-  
-  .modal-body {
-    padding: 1rem;
-  }
-  
-  .form-input {
-    padding: 0.875rem 1rem;
-    font-size: 1rem;
-  }
-  
-  .ltv-display {
-    padding: 0.875rem;
-  }
-  
-  .cancel-button,
-  .submit-button {
-    padding: 0.875rem 1.25rem;
-  }
-}
-
-/* Accessibility */
-@media (prefers-reduced-motion: reduce) {
-  .modal-overlay,
-  .modal-container,
-  .loading-spinner {
-    animation: none;
-  }
-  
-  .submit-button::before {
-    display: none;
-  }
-}
-
-/* Focus styles for better accessibility */
-.form-input:focus,
-.cancel-button:focus,
-.submit-button:focus,
-.modal-close-button:focus {
-  outline: 2px solid #ff6b35;
-  outline-offset: 2px;
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  .modal-container {
-    border-width: 2px;
-  }
-  
-  .form-input {
-    border-width: 3px;
-  }
-  
-  .cancel-button {
-    border-width: 3px;
+    width: 100%;
   }
 } 

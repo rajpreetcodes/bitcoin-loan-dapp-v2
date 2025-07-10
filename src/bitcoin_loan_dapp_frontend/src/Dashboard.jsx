@@ -29,27 +29,28 @@ const Dashboard = () => {
     }
   }, [isAuthenticated, navigate]);
 
+  // Load user data function that can be called multiple times
+  const fetchUserData = async () => {
+    if (!actor) return;
+
+    setIsLoading(true);
+    try {
+      const [fetchedLoans, fetchedBtcAddressResult] = await Promise.all([
+        actor.get_loans(),
+        actor.get_btc_address()
+      ]);
+      setLoans(fetchedLoans || []);
+      setBtcAddress(fetchedBtcAddressResult.length > 0 ? fetchedBtcAddressResult[0] : '');
+    } catch (error) {
+      console.error("Failed to fetch user data:", error);
+      setError("Failed to load user data. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Load user data on mount
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (!actor) return;
-
-      setIsLoading(true);
-      try {
-        const [fetchedLoans, fetchedBtcAddressResult] = await Promise.all([
-          actor.get_loans(),
-          actor.get_btc_address()
-        ]);
-        setLoans(fetchedLoans || []);
-        setBtcAddress(fetchedBtcAddressResult.length > 0 ? fetchedBtcAddressResult[0] : '');
-      } catch (error) {
-        console.error("Failed to fetch user data:", error);
-        setError("Failed to load user data. Please try again.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchUserData();
   }, [actor]);
 
@@ -79,6 +80,8 @@ const Dashboard = () => {
         setBtcAddress(bitcoinAddressInput.trim());
         setBitcoinAddressInput('');
         setSuccess('Bitcoin address linked successfully!');
+        // Refresh data after linking
+        fetchUserData();
       } else if ('Err' in result) {
         setError(result.Err);
       }
@@ -88,6 +91,19 @@ const Dashboard = () => {
     } finally {
       setIsLinking(false);
     }
+  };
+
+  // Handle loan creation
+  const handleLoanCreated = () => {
+    setSuccess("Loan created successfully!");
+    // Refresh data after creating a loan
+    fetchUserData();
+  };
+
+  // Handle view history
+  const handleViewHistory = () => {
+    // For now, just show a message since we don't have a separate history page
+    setSuccess("Viewing loan history (all loans are shown below)");
   };
 
   // Clear messages
@@ -216,7 +232,10 @@ const Dashboard = () => {
             <div className="action-card">
               <h4>View Loan History</h4>
               <p>Review your past and current loans.</p>
-              <button className="action-button secondary">
+              <button 
+                className="action-button secondary"
+                onClick={handleViewHistory}
+              >
                 View History
               </button>
             </div>
@@ -261,9 +280,9 @@ const Dashboard = () => {
           ) : (
             <div className="loans-grid">
               {loans.map((loan, index) => (
-                <div key={index} className="loan-card">
+                <div key={loan.id || index} className="loan-card">
                   <div className="loan-header">
-                    <h4>Loan #{index + 1}</h4>
+                    <h4>Loan #{loan.id}</h4>
                     <span className="loan-status active">Active</span>
                   </div>
                   <div className="loan-details">
@@ -274,6 +293,10 @@ const Dashboard = () => {
                     <div className="loan-detail">
                       <span className="label">Collateral:</span>
                       <span className="value">{Number(loan.collateral_amount).toFixed(8)} BTC</span>
+                    </div>
+                    <div className="loan-detail">
+                      <span className="label">Created:</span>
+                      <span className="value">{new Date(Number(loan.created_at) / 1000000).toLocaleDateString()}</span>
                     </div>
                   </div>
                 </div>
@@ -286,10 +309,11 @@ const Dashboard = () => {
       {/* Create Loan Modal */}
       {isModalOpen && (
         <CreateLoanModal 
-          onClose={() => setIsModalOpen(false)} 
-          onLoanCreated={(newLoan) => {
-            setLoans(prevLoans => [...prevLoans, newLoan]);
-            setSuccess("Loan created successfully!");
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            // Refresh data when modal closes (in case a loan was created)
+            fetchUserData();
           }} 
         />
       )}

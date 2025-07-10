@@ -12,6 +12,13 @@ export const CreateLoanModal = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
+  // Calculate LTV ratio
+  const calculateLtv = () => {
+    if (!collateralAmount || !loanAmount) return 'N/A';
+    const ltv = (parseFloat(loanAmount) / parseFloat(collateralAmount)) * 100;
+    return ltv.toFixed(2) + '%';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -50,9 +57,12 @@ export const CreateLoanModal = ({ isOpen, onClose }) => {
       
       if ('Ok' in result) {
         setSuccess('Loan created successfully!');
+        console.log("Loan created:", result.Ok);
+        
         // Reset form
         setCollateralAmount('');
         setLoanAmount('');
+        
         // Close modal after a delay
         setTimeout(() => {
           onClose();
@@ -106,6 +116,16 @@ export const CreateLoanModal = ({ isOpen, onClose }) => {
               min="0"
               disabled={isSubmitting}
             />
+          </div>
+          
+          <div className="loan-info">
+            <p>
+              <strong>Note:</strong> This is a simulated loan. In a real-world scenario, 
+              you would lock your BTC collateral in a smart contract and receive ckBTC (chain-key Bitcoin) in return.
+            </p>
+            <p>
+              <strong>LTV Ratio:</strong> {calculateLtv()}
+            </p>
           </div>
           
           <div className="form-footer">
