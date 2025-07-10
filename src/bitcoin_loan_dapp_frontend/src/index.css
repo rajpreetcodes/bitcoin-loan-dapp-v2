@@ -1,54 +1,83 @@
-/* Base Styles */
+/* Global styles */
 :root {
-  --primary-color: #3498db;
-  --secondary-color: #2ecc71;
-  --accent-color: #f39c12;
-  --text-color: #333333;
-  --light-text: #666666;
-  --lighter-text: #999999;
-  --background-color: #ffffff;
-  --light-background: #f8f9fa;
-  --border-color: #e0e0e0;
-  --shadow-color: rgba(0, 0, 0, 0.1);
-  --success-color: #2ecc71;
-  --warning-color: #f1c40f;
-  --error-color: #e74c3c;
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+  --secondary-color: #64748b;
+  --background-color: #f8fafc;
+  --card-bg: #ffffff;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-light: #94a3b8;
+  --border-color: #e2e8f0;
+  --success-color: #22c55e;
+  --error-color: #ef4444;
+  --warning-color: #f59e0b;
+  --info-color: #3b82f6;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  line-height: 1.6;
-  color: var(--text-color);
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--text-primary);
   background-color: var(--background-color);
+  line-height: 1.5;
+  font-size: 16px;
 }
 
 h1, h2, h3, h4, h5, h6 {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   font-weight: 600;
-  line-height: 1.3;
+  line-height: 1.2;
+  margin-top: 0;
+  color: var(--text-primary);
+}
+
+h1 {
+  font-size: 2.5rem;
+  letter-spacing: -0.025em;
+}
+
+h2 {
+  font-size: 2rem;
+  letter-spacing: -0.025em;
+}
+
+h3 {
+  font-size: 1.5rem;
+  letter-spacing: -0.025em;
+}
+
+h4 {
+  font-size: 1.25rem;
+}
+
+p {
+  margin-top: 0;
   margin-bottom: 1rem;
 }
 
 a {
   color: var(--primary-color);
   text-decoration: none;
+  transition: color 0.2s;
 }
 
 a:hover {
-  text-decoration: underline;
+  color: var(--primary-hover);
 }
 
 button {
-  cursor: pointer;
-  font-family: inherit;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-weight: 500;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
 }
 
 /* Landing Page Styles */
@@ -324,6 +353,80 @@ button {
   background-color: #f8f9fa;
 }
 
+/* Add wallet status styles */
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.wallet-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-right: 1rem;
+}
+
+.wallet-indicator {
+  display: flex;
+  align-items: center;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.wallet-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+}
+
+.wallet-indicator.connected .wallet-dot {
+  background-color: var(--success-color);
+  box-shadow: 0 0 5px rgba(34, 197, 94, 0.5);
+}
+
+.wallet-indicator.disconnected .wallet-dot {
+  background-color: var(--error-color);
+  box-shadow: 0 0 5px rgba(239, 68, 68, 0.5);
+}
+
+.wallet-text {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.wallet-balance {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.connect-wallet-button {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.connect-wallet-button:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.connect-wallet-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Responsive styles */
 @media (max-width: 768px) {
   .hero-title {
@@ -356,4 +459,59 @@ button {
     width: 100%;
     justify-content: space-between;
   }
+  body {
+    font-size: 14px;
+  }
+  
+  h1 {
+    font-size: 2rem;
+  }
+  
+  h2 {
+    font-size: 1.75rem;
+  }
+  
+  h3 {
+    font-size: 1.25rem;
+  }
+}
+
+/* === Modal Form UI Fixes === */
+
+/* Style for the form labels like "Bitcoin Collateral Amount" */
+.modal-content .form-group label {
+  color: var(--text-secondary); /* Lighter gray for readability */
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Style for all text and number inputs inside the modal */
+.modal-content .form-group input {
+  background-color: #333; /* Lighter background for the input box */
+  color: var(--text-primary); /* White text for user input */
+  border: 1px solid var(--border-color);
+}
+
+/* Style for the placeholder text (e.g., "e.g., 0.1") */
+.modal-content .form-group input::placeholder {
+  color: #888; /* Clearly visible light gray */
+}
+
+/* Add a highlight effect when an input box is selected */
+.modal-content .form-group input:focus {
+  outline: none;
+  border-color: var(--primary-color); /* Highlight with Bitcoin orange */
+  box-shadow: 0 0 0 2px rgba(247, 147, 26, 0.3);
+}
+
+/* Style the blue informational box at the bottom of the form */
+.modal-content .info-box {
+    background-color: rgba(247, 147, 26, 0.1); /* Transparent orange */
+    border: 1px solid var(--primary-color);
+    color: var(--text-secondary);
+    padding: 1rem;
+    margin-top: 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    text-align: center;
 } 

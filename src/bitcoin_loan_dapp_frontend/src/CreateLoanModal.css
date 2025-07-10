@@ -1,4 +1,16 @@
-/* CreateLoanModal CSS - Dark Theme to Match Dashboard */
+/* Modal Container */
+.modal-container {
+  background: #1a1b26;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 480px;
+  margin: 1rem;
+  position: relative;
+  overflow: hidden;
+  animation: slideUp 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
 
 /* Modal Overlay */
 .modal-overlay {
@@ -13,24 +25,6 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 1rem;
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-/* Modal Content */
-.modal-content {
-  background: #1e1e2e;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  width: 100%;
-  max-width: 550px;
-  overflow: hidden;
-  animation: slideUp 0.3s ease;
 }
 
 @keyframes slideUp {
@@ -43,19 +37,20 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
+  padding: 1.25rem 1.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(0, 0, 0, 0.2);
 }
 
 .modal-header h2 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: #ffffff;
+  letter-spacing: -0.025em;
 }
 
-.close-button {
+.btn-close {
   background: none;
   border: none;
   color: #ffffff;
@@ -68,143 +63,190 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
 }
 
-.close-button:hover {
+.btn-close:hover {
   background-color: rgba(255, 255, 255, 0.1);
+  transform: rotate(90deg);
+}
+
+/* Modal Body */
+.modal-body {
+  padding: 1.5rem;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
 }
 
 /* Form Styles */
-form {
-  padding: 1.5rem;
+.loan-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1rem;
 }
 
 .form-group {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0;
 }
 
-.form-group label {
-  display: block;
+.form-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 0.5rem;
-  color: #ffffff;
+  color: #bfdbfe;
   font-weight: 500;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.2);
-  color: #ffffff;
-  font-size: 1rem;
-  transition: border-color 0.2s;
-}
-
-.form-group input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
-}
-
-/* Loan Info Section */
-.loan-info {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-  padding: 1.25rem;
-  margin-bottom: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.loan-info p {
-  margin: 0.5rem 0;
-  color: #a0aec0;
-  line-height: 1.5;
   font-size: 0.9rem;
 }
 
-.loan-info strong {
-  color: #ffffff;
+.currency-label {
+  color: #60a5fa;
   font-weight: 600;
+  font-size: 0.8rem;
 }
 
-/* Form Footer */
-.form-footer {
+.form-input {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(17, 24, 39, 0.8);
+  color: #ffffff;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  background: rgba(17, 24, 39, 0.95);
+}
+
+.form-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.form-input.error {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.form-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: rgba(17, 24, 39, 0.6);
+}
+
+.error-message {
+  color: #ef4444;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  display: block;
+}
+
+/* Info Box */
+.info-box {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 10px;
+  padding: 1rem;
+  margin: 1rem 0;
+  color: #93c5fd;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Wallet Connect Section */
+.wallet-connect-section {
+  background: rgba(17, 24, 39, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+}
+
+.wallet-connect-section p {
+  color: #bfdbfe;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+/* Button Styles */
+.modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
-  margin-top: 1.5rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.cancel-button {
+.btn {
   padding: 0.75rem 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
-  background: transparent;
-  color: #ffffff;
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.cancel-button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.submit-button {
-  padding: 0.75rem 1.5rem;
   border: none;
-  border-radius: 8px;
-  background: #3b82f6;
-  color: #ffffff;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
 }
 
-.submit-button:hover:not(:disabled) {
-  background: #2563eb;
-}
-
-.submit-button:disabled,
-.cancel-button:disabled {
+.btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-/* Error and Success Messages */
-.error-message {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #f87171;
-  padding: 0.75rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+.btn-primary {
+  background: #3b82f6;
+  color: white;
 }
 
-.success-message {
-  background-color: rgba(34, 197, 94, 0.1);
-  color: #4ade80;
-  padding: 0.75rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-  border: 1px solid rgba(34, 197, 94, 0.3);
+.btn-primary:hover:not(:disabled) {
+  background: #2563eb;
+  transform: translateY(-1px);
 }
 
-/* Responsive Adjustments */
+/* Loading State */
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
 @media (max-width: 640px) {
-  .modal-content {
-    max-width: 100%;
-    margin: 0 1rem;
+  .modal-container {
+    margin: 0.5rem;
+    max-width: calc(100% - 1rem);
   }
   
-  .form-footer {
+  .modal-body {
+    padding: 1rem;
+  }
+  
+  .modal-actions {
     flex-direction: column;
   }
   
-  .cancel-button,
-  .submit-button {
+  .btn {
     width: 100%;
   }
 } 

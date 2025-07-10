@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import '../CreateLoanModal.css';
 
 export const CreateLoanModal = ({ isOpen, onClose, onLoanCreated }) => {
-  const { actor } = useAuth();
+  const { actor, isPlugConnected, connectPlug } = useAuth();
   
   const [collateralAmount, setCollateralAmount] = useState('');
   const [loanAmount, setLoanAmount] = useState('');
@@ -13,6 +13,8 @@ export const CreateLoanModal = ({ isOpen, onClose, onLoanCreated }) => {
   const [error, setError] = useState('');
   const [ltvRatio, setLtvRatio] = useState('N/A');
   const [btcAddress, setBtcAddress] = useState('');
+  const [walletBalance, setWalletBalance] = useState(null);
+  const [isCheckingBalance, setIsCheckingBalance] = useState(false);
   
   // Calculate LTV ratio when collateral or loan amount changes
   const calculateLTV = (loan, collateral) => {
@@ -45,6 +47,34 @@ export const CreateLoanModal = ({ isOpen, onClose, onLoanCreated }) => {
     
     fetchBtcAddress();
   }, [actor]);
+
+  // Check wallet balance when connected to Plug
+  useEffect(() => {
+    const checkWalletBalance = async () => {
+      if (!isPlugConnected || !window.ic?.plug) return;
+      
+      setIsCheckingBalance(true);
+      try {
+        // This is a simulated balance for demo purposes
+        // In a real app, you would query the actual balance from Plug wallet
+        if (window.ic.plug.isConnected()) {
+          // For a real implementation, you would use:
+          // const balance = await window.ic.plug.requestBalance();
+          // setWalletBalance(balance[0]?.amount || 0);
+          
+          // Simulated balance for demo
+          const mockBalance = Math.random() * 1.5;
+          setWalletBalance(mockBalance);
+        }
+      } catch (error) {
+        console.error("Failed to check wallet balance:", error);
+      } finally {
+        setIsCheckingBalance(false);
+      }
+    };
+    
+    checkWalletBalance();
+  }, [isPlugConnected]);
   
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -76,29 +106,88 @@ export const CreateLoanModal = ({ isOpen, onClose, onLoanCreated }) => {
       return;
     }
     
+    // Check if wallet is connected for transaction
+    if (!isPlugConnected) {
+      setError('Please connect your wallet to proceed');
+      return;
+    }
+    
+    // Validate wallet balance (in a real app, this would check actual balance)
+    if (walletBalance !== null && parseFloat(collateralAmount) > walletBalance) {
+      setError(`Insufficient balance. You have ${walletBalance.toFixed(8)} BTC but are trying to collateralize ${collateralAmount} BTC`);
+      return;
+    }
+    
     setIsSubmitting(true);
     setError('');
     
     try {
-      // The backend only expects two parameters: collateral and loan amount
-      const result = await actor.create_loan(
-        parseFloat(collateralAmount),
-        parseFloat(loanAmount)
-      );
+      // Simulate wallet transaction approval
+      let transactionApproved = false;
       
-      if ('Ok' in result) {
-        if (onLoanCreated) {
-          onLoanCreated(result.Ok);
+      if (window.ic?.plug?.isConnected()) {
+        // In a real implementation, you would request transaction approval:
+        // const approved = await window.ic.plug.requestTransfer({
+        //   to: 'ESCROW_CANISTER_ID',
+        //   amount: parseFloat(collateralAmount),
+        // });
+        
+        // For demo purposes, simulate approval
+        transactionApproved = true;
+        
+        // Show transaction confirmation UI
+        const userConfirmed = window.confirm(
+          `This will lock ${collateralAmount} BTC as collateral and provide you with ${loanAmount} ckBTC as a loan. Proceed?`
+        );
+        
+        if (!userConfirmed) {
+          setError('Transaction cancelled by user');
+          setIsSubmitting(false);
+          return;
         }
-        onClose();
-      } else if ('Err' in result) {
-        setError(`Failed to create loan: ${result.Err}`);
+      } else {
+        setError('Wallet connection lost. Please reconnect and try again.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      if (transactionApproved) {
+        // The backend only expects two parameters: collateral and loan amount
+        const result = await actor.create_loan(
+          parseFloat(collateralAmount),
+          parseFloat(loanAmount)
+        );
+        
+        if ('Ok' in result) {
+          // Update wallet balance after successful transaction
+          if (walletBalance !== null) {
+            setWalletBalance(prevBalance => prevBalance - parseFloat(collateralAmount));
+          }
+          
+          if (onLoanCreated) {
+            onLoanCreated(result.Ok);
+          }
+          onClose();
+        } else if ('Err' in result) {
+          setError(`Failed to create loan: ${result.Err}`);
+        }
+      } else {
+        setError('Transaction was not approved by the wallet');
       }
     } catch (error) {
       console.error("Error creating loan:", error);
       setError(`Failed to create loan: ${error.message || 'Unknown error'}`);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+  
+  // Connect wallet if not connected
+  const handleConnectWallet = async () => {
+    try {
+      await connectPlug();
+    } catch (error) {
+      setError(`Failed to connect wallet: ${error.message || 'Unknown error'}`);
     }
   };
   
@@ -173,7 +262,7 @@ export const CreateLoanModal = ({ isOpen, onClose, onLoanCreated }) => {
             />
           </div>
           
-          <div className="form-note">
+          <div className="info-box">
             <strong>Note:</strong> You will need to send {collateralAmount || '0'} BTC to your linked Bitcoin address as collateral.
             {!btcAddress && <p className="warning">You must link a Bitcoin address before creating a loan.</p>}
           </div>
@@ -187,32 +276,53 @@ export const CreateLoanModal = ({ isOpen, onClose, onLoanCreated }) => {
               <span className="stat-label">Bitcoin Address:</span>
               <span className="stat-value">{btcAddress || 'Not linked'}</span>
             </div>
+            {walletBalance !== null && (
+              <div className="stat-item">
+                <span className="stat-label">Wallet Balance:</span>
+                <span className="stat-value">
+                  {isCheckingBalance ? 'Checking...' : `${walletBalance.toFixed(8)} BTC`}
+                  <small style={{fontSize: '0.7rem', opacity: 0.8, display: 'block', marginTop: '2px'}}>(Demo value)</small>
+                </span>
+              </div>
+            )}
           </div>
           
           {error && <div className="form-error">{error}</div>}
           
           <div className="form-buttons">
-            <button 
-              type="button" 
-              className="secondary-button" 
-              onClick={fillSampleValues}
-            >
-              Fill Sample Values
-            </button>
-            <button 
-              type="button" 
-              className="secondary-button" 
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit" 
-              className="primary-button"
-              disabled={isSubmitting || !btcAddress}
-            >
-              {isSubmitting ? 'Creating Loan...' : 'Create Loan'}
-            </button>
+            {!isPlugConnected ? (
+              <button 
+                type="button" 
+                className="primary-button" 
+                onClick={handleConnectWallet}
+              >
+                Connect Wallet
+              </button>
+            ) : (
+              <>
+                <button 
+                  type="button" 
+                  className="secondary-button" 
+                  onClick={fillSampleValues}
+                >
+                  Fill Sample Values
+                </button>
+                <button 
+                  type="button" 
+                  className="secondary-button" 
+                  onClick={onClose}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="primary-button"
+                  disabled={isSubmitting || !btcAddress}
+                >
+                  {isSubmitting ? 'Creating Loan...' : 'Create Loan'}
+                </button>
+              </>
+            )}
           </div>
         </form>
       </div>

@@ -8,14 +8,13 @@ import toast, { Toaster } from 'react-hot-toast';
 import './index.css'; // This is the stylesheet we will create next
 
 function App() {
-  const { login, logout, connectPlug, isAuthenticated, isPlugConnected, actor, userPrincipal } = useAuth();
+  const { login, logout, connectPlug, isAuthenticated, isPlugConnected, actor, userPrincipal, walletBalances, isConnecting } = useAuth();
 
   const [loans, setLoans] = useState([]);
   const [btcAddress, setBtcAddress] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEscrowModalOpen, setIsEscrowModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
   const [activeTab, setActiveTab] = useState('loans'); // 'loans' or 'escrow'
   const [shouldRefreshLoans, setShouldRefreshLoans] = useState(false);
   const [shouldRefreshEscrows, setShouldRefreshEscrows] = useState(false);
@@ -81,13 +80,10 @@ function App() {
   };
 
   const handleConnect = async () => {
-    setIsConnecting(true);
     try {
       await login();
     } catch (error) {
       console.error("Connection failed:", error);
-    } finally {
-      setIsConnecting(false);
     }
   };
 
@@ -96,6 +92,8 @@ function App() {
     toast.success("Loan created successfully!");
     // Refresh data after creating a loan
     fetchUserData();
+    // Set flag to refresh loans in the Dashboard
+    setShouldRefreshLoans(true);
   };
 
   // Handle escrow creation
@@ -221,6 +219,8 @@ function App() {
             setIsModalOpen(false);
             // Refresh data after modal closes
             fetchUserData();
+            // Set flag to refresh loans in the Dashboard
+            setShouldRefreshLoans(true);
           }}
           onLoanCreated={handleLoanCreated}
         />
@@ -248,18 +248,41 @@ function App() {
             className={`nav-tab ${activeTab === 'loans' ? 'active' : ''}`}
             onClick={() => handleTabChange('loans')}
           >
-            Loan Dashboard
+            Loans
           </button>
           <button 
             className={`nav-tab ${activeTab === 'escrow' ? 'active' : ''}`}
             onClick={() => handleTabChange('escrow')}
           >
-            Escrow Dashboard
+            Escrow
           </button>
-          <div className="user-info">
-            <span>{userPrincipal?.toText().substring(0, 5)}...{userPrincipal?.toText().slice(-3)}</span>
-            <button onClick={logout} className="logout-button">Logout</button>
-          </div>
+        </div>
+        <div className="nav-actions">
+          {isPlugConnected ? (
+            <div className="wallet-status">
+              <div className="wallet-indicator connected">
+                <span className="wallet-dot"></span>
+                <span className="wallet-text">Wallet Connected</span>
+              </div>
+              {isPlugConnected && walletBalances && (
+                <div className="wallet-balance">
+                  <span>{walletBalances.BTC?.toFixed(4)} BTC <small style={{opacity: 0.7}}>(Demo)</small></span>
+                  <span>{walletBalances.ckBTC?.toFixed(4)} ckBTC <small style={{opacity: 0.7}}>(Demo)</small></span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button 
+              className="connect-wallet-button"
+              onClick={connectPlug}
+              disabled={isConnecting}
+            >
+              {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+            </button>
+          )}
+          <button className="logout-button" onClick={logout}>
+            Logout
+          </button>
         </div>
       </nav>
       

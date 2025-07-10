@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import './Dashboard.css';
 
@@ -9,9 +9,10 @@ const Dashboard = ({ openLoanModal, shouldRefresh, onRefreshed }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
 
   // Load loans and BTC address
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!actor) return;
     
     setIsLoading(true);
@@ -30,13 +31,14 @@ const Dashboard = ({ openLoanModal, shouldRefresh, onRefreshed }) => {
       setError("Failed to load data. Please try again.");
     } finally {
       setIsLoading(false);
+      setLastRefreshTime(Date.now());
     }
-  };
+  }, [actor]);
 
   // Load data on mount and when actor changes
   useEffect(() => {
     fetchData();
-  }, [actor]);
+  }, [actor, fetchData]);
 
   // Handle refresh when shouldRefresh prop changes
   useEffect(() => {
@@ -44,7 +46,16 @@ const Dashboard = ({ openLoanModal, shouldRefresh, onRefreshed }) => {
       fetchData();
       if (onRefreshed) onRefreshed();
     }
-  }, [shouldRefresh, onRefreshed]);
+  }, [shouldRefresh, onRefreshed, fetchData]);
+
+  // Set up polling for automatic refresh (every 30 seconds)
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      fetchData();
+    }, 30000);
+    
+    return () => clearInterval(intervalId);
+  }, [fetchData]);
 
   // Handle BTC address linking
   const handleBtcAddressLink = async (e) => {
@@ -107,8 +118,13 @@ const Dashboard = ({ openLoanModal, shouldRefresh, onRefreshed }) => {
   const getLoanStatusDisplay = (loan) => {
     if (!loan || !loan.status) return { text: 'Active', class: 'status-active' };
     
-    const status = loan.status.toLowerCase ? loan.status.toLowerCase() : 'active';
+    const status = loan.status?.toLowerCase ? loan.status.toLowerCase() : 'active';
     return { text: loan.status || 'Active', class: `status-${status}` };
+  };
+
+  // Generate a unique loan ID with prefix
+  const formatLoanId = (id) => {
+    return `BL-${id.toString().padStart(6, '0')}`;
   };
 
   // Calculate stats
@@ -124,6 +140,7 @@ const Dashboard = ({ openLoanModal, shouldRefresh, onRefreshed }) => {
         <section className="welcome-section">
           <h2>Loan Dashboard</h2>
           <p>Manage your Bitcoin-backed loans on the Internet Computer.</p>
+          <small className="last-updated">Last updated: {new Date(lastRefreshTime).toLocaleTimeString()}</small>
         </section>
 
         {/* Error/Success Messages */}
@@ -224,11 +241,7 @@ const Dashboard = ({ openLoanModal, shouldRefresh, onRefreshed }) => {
               <h4>+ Create New Loan</h4>
               <p>Start a new Bitcoin-backed loan.</p>
               <button 
-                onClick={() => {
-                  openLoanModal();
-                  // Set a timeout to refresh data after modal interaction
-                  setTimeout(fetchData, 2000);
-                }}
+                onClick={openLoanModal}
                 className="action-button primary"
               >
                 Create Loan
@@ -252,17 +265,13 @@ const Dashboard = ({ openLoanModal, shouldRefresh, onRefreshed }) => {
         {/* Loans Section */}
         <section className="activity-section">
           <h3>Your Loans</h3>
-          {isLoading ? (
+          {isLoading && loans.length === 0 ? (
             <p>Loading loans...</p>
           ) : loans.length === 0 ? (
             <div className="empty-state">
               <p>You don't have any active loans.</p>
               <button 
-                onClick={() => {
-                  openLoanModal();
-                  // Set a timeout to refresh data after modal interaction
-                  setTimeout(fetchData, 2000);
-                }}
+                onClick={openLoanModal}
                 className="action-button primary"
               >
                 Create Your First Loan
@@ -275,7 +284,7 @@ const Dashboard = ({ openLoanModal, shouldRefresh, onRefreshed }) => {
                 return (
                   <div key={loan.id} className="loan-card">
                     <div className="loan-header">
-                      <h4>Loan #{loan.id}</h4>
+                      <h4>{formatLoanId(loan.id)}</h4>
                       <span className={`loan-status ${statusDisplay.class}`}>
                         {statusDisplay.text || 'Active'}
                       </span>
