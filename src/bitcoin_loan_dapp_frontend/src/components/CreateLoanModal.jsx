@@ -1,112 +1,131 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import toast from 'react-hot-toast';
+import '../CreateLoanModal.css';
 
-export const CreateLoanModal = ({ onClose, onLoanCreated }) => {
+export const CreateLoanModal = ({ isOpen, onClose }) => {
   const { actor } = useAuth();
   const [collateralAmount, setCollateralAmount] = useState('');
   const [loanAmount, setLoanAmount] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const calculateLoanToValueRatio = () => {
-    if (!collateralAmount || !loanAmount) return 0;
-    return ((parseFloat(loanAmount) / parseFloat(collateralAmount)) * 100).toFixed(1);
-  };
+  if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    
+    // Input validation
+    if (!collateralAmount || !loanAmount) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    const collateralValue = parseFloat(collateralAmount);
+    const loanValue = parseFloat(loanAmount);
+
+    if (isNaN(collateralValue) || isNaN(loanValue)) {
+      setError('Please enter valid numbers');
+      return;
+    }
+
+    if (collateralValue <= 0 || loanValue <= 0) {
+      setError('Values must be greater than zero');
+      return;
+    }
+
+    // Simple LTV validation (can be adjusted based on business rules)
+    const ltv = loanValue / collateralValue;
+    if (ltv > 0.7) {
+      setError('Loan-to-value ratio is too high. Maximum LTV is 70%.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError('');
+    setSuccess('');
 
     try {
-      if (!actor) {
-        toast.error('Actor not available');
-        return;
-      }
-
-      // This is a placeholder - replace with actual loan creation logic
-      const newLoan = {
-        id: Date.now().toString(),
-        collateralAmount: parseFloat(collateralAmount),
-        loanAmount: parseFloat(loanAmount),
-        createdAt: new Date().toISOString(),
-        status: 'active'
-      };
-
-      // Call the backend to create the loan
-      // await actor.create_loan(newLoan);
+      const result = await actor.create_loan(collateralValue, loanValue);
       
-      onLoanCreated(newLoan);
-      onClose();
-    } catch (err) {
-      toast.error(err.message || 'Failed to create loan');
+      if ('Ok' in result) {
+        setSuccess('Loan created successfully!');
+        // Reset form
+        setCollateralAmount('');
+        setLoanAmount('');
+        // Close modal after a delay
+        setTimeout(() => {
+          onClose();
+        }, 2000);
+      } else if ('Err' in result) {
+        setError(`Failed to create loan: ${result.Err}`);
+      }
+    } catch (error) {
+      console.error("Error creating loan:", error);
+      setError(`Failed to create loan: ${error.message || 'Unknown error'}`);
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal-content">
         <div className="modal-header">
-          <h3>Create New Loan</h3>
+          <h2>Create New Loan</h2>
           <button className="close-button" onClick={onClose}>×</button>
         </div>
         
-        <div className="modal-body">
-          <p>Secure a loan by locking your Bitcoin as collateral. Your BTC remains under your control via smart contracts.</p>
-        
         <form onSubmit={handleSubmit}>
+          {error && <div className="error-message">{error}</div>}
+          {success && <div className="success-message">{success}</div>}
+          
           <div className="form-group">
-            <label htmlFor="collateralAmount">
-              COLLATERAL AMOUNT
-              <span className="currency-label">BTC</span>
-            </label>
+            <label htmlFor="collateralAmount">Bitcoin Collateral Amount (BTC)</label>
             <input
-              id="collateralAmount"
               type="number"
-              step="0.00000001"
+              id="collateralAmount"
               value={collateralAmount}
               onChange={(e) => setCollateralAmount(e.target.value)}
-              placeholder="0.00"
-              required
+              placeholder="e.g., 0.1"
+              step="0.00000001"
+              min="0"
+              disabled={isSubmitting}
             />
           </div>
-
+          
           <div className="form-group">
-            <label htmlFor="loanAmount">
-              LOAN AMOUNT
-              <span className="currency-label">ckBTC</span>
-            </label>
+            <label htmlFor="loanAmount">Loan Amount (ckBTC)</label>
             <input
-              id="loanAmount"
               type="number"
-              step="0.00000001"
+              id="loanAmount"
               value={loanAmount}
               onChange={(e) => setLoanAmount(e.target.value)}
-              placeholder="0.00"
-              required
+              placeholder="e.g., 0.05"
+              step="0.00000001"
+              min="0"
+              disabled={isSubmitting}
             />
           </div>
-
-          {collateralAmount && loanAmount && (
-            <div className="ratio-display">
-              <span>Loan-to-Value Ratio: </span>
-              <span className="ratio-value">{calculateLoanToValueRatio()}%</span>
-            </div>
-          )}
-
-
-
-          <div className="modal-actions">
-            <button type="button" onClick={onClose}>
+          
+          <div className="form-footer">
+            <button 
+              type="button" 
+              className="cancel-button"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
               Cancel
             </button>
-            <button type="submit" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Loan'}
+            <button 
+              type="submit" 
+              className="submit-button"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Creating...' : 'Create Loan'}
             </button>
           </div>
         </form>
-        </div>
       </div>
     </div>
   );

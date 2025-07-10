@@ -18,9 +18,6 @@ export default defineConfig({
         changeOrigin: true,
         secure: false
       }
-    },
-    headers: {
-      'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' http://127.0.0.1:4943 http://localhost:4943 http://localhost:* https://icp0.io https://*.icp0.io https://icp-api.io;"
     }
   }
 });

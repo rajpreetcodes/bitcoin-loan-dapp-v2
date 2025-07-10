@@ -4,32 +4,25 @@ import type { IDL } from '@dfinity/candid';
 
 export interface Loan {
   'id' : bigint,
-  'collateral_amount' : bigint,
-  'status' : LoanStatus,
-  'borrower' : Principal,
-  'loan_amount' : bigint,
+  'owner' : Principal,
+  'collateral_amount' : number,
+  'loan_amount' : number,
+  'created_at' : bigint,
 }
-export interface LoanReference {
-  'id' : bigint,
-  'status' : LoanStatus,
-  'ipfs_hash' : string,
-  'borrower' : Principal,
-}
-export type LoanStatus = { 'Repaid' : null } |
-  { 'Active' : null };
-export type Result = { 'Ok' : bigint } |
-  { 'Err' : string };
+
 export type Result_1 = { 'Ok' : null } |
   { 'Err' : string };
+
+export type Result_Loan = { 'Ok' : Loan } |
+  { 'Err' : string };
+
 export interface _SERVICE {
-  'create_loan' : ActorMethod<[bigint, bigint], Result>,
-  'get_linked_btc_address' : ActorMethod<[], [] | [string]>,
-  'get_loan' : ActorMethod<[bigint], { 'Ok' : Loan } | { 'Err' : string }>,
-  'get_loan_refs_by_borrower' : ActorMethod<[Principal], Array<LoanReference>>,
-  'get_stats' : ActorMethod<[], [bigint, bigint]>,
+  'create_loan' : ActorMethod<[number, number], Result_Loan>,
+  'get_loans' : ActorMethod<[], Array<Loan>>,
+  'get_btc_address' : ActorMethod<[], [] | [string]>,
   'link_btc_address' : ActorMethod<[string], Result_1>,
-  'repay_loan' : ActorMethod<[bigint], Result_1>,
-  'whoami' : ActorMethod<[], Principal>,
+  'health' : ActorMethod<[], string>,
 }
+
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

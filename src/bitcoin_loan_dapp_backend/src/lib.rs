@@ -126,12 +126,16 @@ pub fn link_btc_address(address: String) -> Result<(), String> {
         return Err("Bitcoin address cannot be empty".to_string());
     }
 
-    // Basic Bitcoin address validation
-    if !address.starts_with("bc1") && !address.starts_with("1") && !address.starts_with("3") {
-        return Err("Invalid Bitcoin address format. Must start with bc1, 1, or 3".to_string());
+    // Enhanced Bitcoin address validation to support all formats
+    // This includes legacy (1...), SegWit (3...), Bech32 (bc1...) and Taproot (bc1p...)
+    if !(address.starts_with("1") || 
+         address.starts_with("3") || 
+         address.starts_with("bc1")) {
+        return Err("Invalid Bitcoin address format. Must start with 1, 3, or bc1".to_string());
     }
 
-    if address.len() < 26 || address.len() > 60 {
+    // Allow longer addresses for newer formats like Taproot
+    if address.len() < 26 || address.len() > 100 {
         return Err("Invalid Bitcoin address length".to_string());
     }
 
@@ -149,31 +153,31 @@ pub fn link_btc_address(address: String) -> Result<(), String> {
 }
 
 #[ic_cdk::query]
-pub fn get_loans() -> Vec<Loan> {
-    let owner = ic_cdk::caller();
-    USER_LOANS.with(|p| {
-        match p.borrow().get(&owner) {
-            Some(loan_ids) => LOANS.with(|loans_map| {
-                loan_ids.0.iter()
-                    .filter_map(|id| {
-                        loans_map.borrow().get(id).map(|loan| loan.clone())
-                    })
-                    .collect()
-            }),
-            None => vec![],
-        }
+fn get_loans() -> Vec<Loan> {
+    let caller = ic_cdk::caller();
+    
+    LOANS.with(|loans| {
+        let loans_ref = loans.borrow();
+        loans_ref.iter()
+            .filter(|(_, loan)| loan.owner == caller)
+            .map(|(_, loan)| loan.clone())
+            .collect()
     })
 }
 
 #[ic_cdk::query]
-pub fn get_btc_address() -> Option<String> {
-    let owner = ic_cdk::caller();
-    USERS.with(|p| p.borrow().get(&owner).and_then(|profile| profile.btc_address))
+fn get_btc_address() -> Option<String> {
+    let caller = ic_cdk::caller();
+    
+    USERS.with(|users| {
+        let users_ref = users.borrow();
+        users_ref.get(&caller).and_then(|profile| profile.btc_address.clone())
+    })
 }
 
 #[ic_cdk::query]
-pub fn health() -> String { 
-    "OK".to_string() 
+fn health() -> String {
+    "OK".to_string()
 }
 
 ic_cdk::export_candid!();

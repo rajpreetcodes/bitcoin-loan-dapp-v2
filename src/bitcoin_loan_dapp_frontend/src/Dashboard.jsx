@@ -60,10 +60,11 @@ const Dashboard = () => {
       return;
     }
 
-    // Basic Bitcoin address validation
-    const bitcoinAddressRegex = /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$|^bc1[a-z0-9]{39,59}$/;
+    // Enhanced Bitcoin address validation to support all formats
+    // This includes legacy (1...), SegWit (3...), Bech32 (bc1...) and Taproot (bc1p...)
+    const bitcoinAddressRegex = /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$|^bc1[a-zA-Z0-9]{8,100}$/;
     if (!bitcoinAddressRegex.test(bitcoinAddressInput.trim())) {
-      setError('Please enter a valid Bitcoin address');
+      setError('Please enter a valid Bitcoin address (starting with 1, 3, or bc1)');
       return;
     }
 
@@ -73,12 +74,13 @@ const Dashboard = () => {
 
     try {
       const result = await actor.link_btc_address(bitcoinAddressInput.trim());
-      if (result.includes('successfully')) {
+      
+      if ('Ok' in result) {
         setBtcAddress(bitcoinAddressInput.trim());
         setBitcoinAddressInput('');
         setSuccess('Bitcoin address linked successfully!');
-      } else {
-        setError(result);
+      } else if ('Err' in result) {
+        setError(result.Err);
       }
     } catch (error) {
       console.error("Failed to link Bitcoin address:", error);

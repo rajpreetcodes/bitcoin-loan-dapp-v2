@@ -4,6 +4,9 @@ import { AuthClient } from '@dfinity/auth-client';
 // Import the canister declarations (these are auto-generated)
 import { idlFactory } from '../../declarations/bitcoin_loan_dapp_backend';
 
+// Import from our config file
+import { HOST, BACKEND_CANISTER_ID, IDENTITY_PROVIDER_URL } from './config';
+
 // PRODUCTION-READY ENVIRONMENT CONFIGURATION
 const ENV_CONFIG = {
   development: {
@@ -11,8 +14,8 @@ const ENV_CONFIG = {
     identityProvider: "http://127.0.0.1:4943/?canisterId=rdmx6-jaaaa-aaaaa-aaadq-cai"
   },
   local: {
-    host: "http://127.0.0.1:4943", 
-    identityProvider: "http://127.0.0.1:4943/?canisterId=rdmx6-jaaaa-aaaaa-aaadq-cai"
+    host: HOST,
+    identityProvider: IDENTITY_PROVIDER_URL
   },
   ic: {
     host: "https://icp-api.io",
@@ -20,23 +23,7 @@ const ENV_CONFIG = {
   }
 };
 
-// Get canister IDs from .dfx/local/canister_ids.json
-const CANISTER_IDS = {
-  BITCOIN_LOAN_DAPP_BACKEND: 
-    process.env.CANISTER_ID_BITCOIN_LOAN_DAPP_BACKEND || 
-    import.meta.env.VITE_CANISTER_ID_BITCOIN_LOAN_DAPP_BACKEND ||
-    "uxrrr-q7777-77774-qaaaq-cai", // Fallback hardcoded ID - update with your actual local ID
-  INTERNET_IDENTITY: 
-    process.env.CANISTER_ID_INTERNET_IDENTITY || 
-    import.meta.env.VITE_CANISTER_ID_INTERNET_IDENTITY ||
-    "rdmx6-jaaaa-aaaaa-aaadq-cai", // Use standard II canister ID
-  BITCOIN_LOAN_DAPP_FRONTEND: 
-    process.env.CANISTER_ID_BITCOIN_LOAN_DAPP_FRONTEND || 
-    import.meta.env.VITE_CANISTER_ID_BITCOIN_LOAN_DAPP_FRONTEND ||
-    "u6s2n-gx777-77774-qaaba-cai", // Fallback hardcoded ID
-};
-
-// Environment detection
+// Get environment
 const getEnvironment = () => {
   if (typeof window !== 'undefined' && window.location) {
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -78,7 +65,7 @@ export const createActor = async () => {
     
     const actorInstance = Actor.createActor(idlFactory, {
       agent,
-      canisterId: CANISTER_IDS.BITCOIN_LOAN_DAPP_BACKEND,
+      canisterId: BACKEND_CANISTER_ID,
     });
     
     return actorInstance;
@@ -105,7 +92,7 @@ export const createAuthenticatedActorII = async () => {
 
     const actorInstance = Actor.createActor(idlFactory, {
       agent,
-      canisterId: CANISTER_IDS.BITCOIN_LOAN_DAPP_BACKEND,
+      canisterId: BACKEND_CANISTER_ID,
     });
 
     return actorInstance;
@@ -122,7 +109,10 @@ export const createAuthenticatedActorPlug = async () => {
       throw new Error("Plug Wallet not installed");
     }
 
-    const backendCanisterId = CANISTER_IDS.BITCOIN_LOAN_DAPP_BACKEND;
+    // Explicitly set the host for Plug wallet
+    if (!window.ic.plug._host) {
+      window.ic.plug._host = HOST;
+    }
 
     // Disconnect to clear any cached state
     try {
@@ -134,21 +124,29 @@ export const createAuthenticatedActorPlug = async () => {
       console.log("Disconnect not needed or failed:", e.message);
     }
 
-    // Connect with correct host
+    // Connect with correct host - explicitly set
     const connected = await window.ic.plug.requestConnect({
-      whitelist: [backendCanisterId],
-      host: CONFIG.host,
+      whitelist: [BACKEND_CANISTER_ID],
+      host: HOST,
     });
 
     if (!connected) {
       throw new Error("Failed to connect to Plug Wallet");
     }
 
-    // Create actor
+    // Create agent with explicit host
+    if (!window.ic.plug.agent) {
+      await window.ic.plug.createAgent({
+        whitelist: [BACKEND_CANISTER_ID],
+        host: HOST
+      });
+    }
+
+    // Create actor with explicit host
     const plugActor = await window.ic.plug.createActor({
-      canisterId: backendCanisterId,
+      canisterId: BACKEND_CANISTER_ID,
       interfaceFactory: idlFactory,
-      host: CONFIG.host,
+      host: HOST,
     });
 
     if (!plugActor) {

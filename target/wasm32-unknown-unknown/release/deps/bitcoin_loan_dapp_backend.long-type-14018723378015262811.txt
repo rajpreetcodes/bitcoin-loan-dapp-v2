@@ -1,0 +1,1 @@
+Cloned<Filter<ic_stable_structures::btreemap::Iter<'_, u64, Loan, VirtualMemory<Ic0StableMemory>>, {closure@src/bitcoin_loan_dapp_backend/src/lib.rs:158:21: 158:27}>>

@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuthClient } from '@dfinity/auth-client';
-import { createActor } from '../agent'; // This path is now correct (../agent)
+import { createActor } from '../agent';
 import { idlFactory as backendIdlFactory } from '../../../declarations/bitcoin_loan_dapp_backend/bitcoin_loan_dapp_backend.did.js';
-import { IDENTITY_PROVIDER_URL, BACKEND_CANISTER_ID } from '../config';
+import { IDENTITY_PROVIDER_URL, BACKEND_CANISTER_ID, HOST } from '../config';
+import { overridePlugWallet } from '../plugOverride';
 
 export const AuthContext = createContext();
 
@@ -21,6 +22,9 @@ export const AuthProvider = ({ children }) => {
                 handleAuthenticated(client);
             }
         });
+        
+        // Try to override Plug wallet if available
+        overridePlugWallet();
     }, []);
 
     const handleAuthenticated = (client) => {
@@ -56,29 +60,46 @@ export const AuthProvider = ({ children }) => {
     };
 
     const connectPlug = async () => {
+        // Try to override Plug wallet again just before connecting
+        overridePlugWallet();
+        
         if (!window.ic?.plug) {
             window.open('https://plugwallet.ooo/', '_blank');
             return;
         }
-        await window.ic.plug.requestConnect({ whitelist: [BACKEND_CANISTER_ID] });
+        
+        try {
+            // Ensure we're using the correct host
+            await window.ic.plug.requestConnect({
+                whitelist: [BACKEND_CANISTER_ID],
+                host: HOST
+            });
 
-        const plugAgent = window.ic.plug.agent;
-        if(!plugAgent) {
-            await window.ic.plug.createAgent({whitelist: [BACKEND_CANISTER_ID]});
-        }
+            const plugAgent = window.ic.plug.agent;
+            if(!plugAgent) {
+                await window.ic.plug.createAgent({
+                    whitelist: [BACKEND_CANISTER_ID],
+                    host: HOST
+                });
+            }
 
-        const plugActorInstance = await window.ic.plug.createActor({
-            canisterId: BACKEND_CANISTER_ID,
-            interfaceFactory: backendIdlFactory,
-        });
+            const plugActorInstance = await window.ic.plug.createActor({
+                canisterId: BACKEND_CANISTER_ID,
+                interfaceFactory: backendIdlFactory,
+                host: HOST
+            });
 
-        setActor(plugActorInstance); // Set the main actor to be the Plug actor
-        setIsPlugConnected(true);
-        // Ensure we are also marked as generally authenticated
-        if(!isAuthenticated) {
-            const principal = await window.ic.plug.agent.getPrincipal();
-            setUserPrincipal(principal);
-            setIsAuthenticated(true);
+            setActor(plugActorInstance); // Set the main actor to be the Plug actor
+            setIsPlugConnected(true);
+            // Ensure we are also marked as generally authenticated
+            if(!isAuthenticated) {
+                const principal = await window.ic.plug.agent.getPrincipal();
+                setUserPrincipal(principal);
+                setIsAuthenticated(true);
+            }
+        } catch (error) {
+            console.error("Failed to connect to Plug wallet:", error);
+            alert("Failed to connect to Plug wallet. Please make sure it's installed and try again.");
         }
     };
 
