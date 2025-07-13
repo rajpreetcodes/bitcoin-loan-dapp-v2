@@ -320,16 +320,35 @@ code {
 
 .user-info {
   display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-left: 1rem;
-  padding-left: 1rem;
-  border-left: 1px solid #e0e0e0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  margin-right: 1rem;
 }
 
-.user-info span {
-  font-size: 0.9rem;
-  color: #666;
+.user-status {
+  display: flex;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.user-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+  background-color: #10b981;
+  box-shadow: 0 0 5px rgba(16, 185, 129, 0.5);
+}
+
+.user-text {
+  color: #10b981;
+  font-weight: 500;
+}
+
+.user-principal {
+  font-size: 0.8rem;
+  color: #6b7280;
 }
 
 .logout-button {

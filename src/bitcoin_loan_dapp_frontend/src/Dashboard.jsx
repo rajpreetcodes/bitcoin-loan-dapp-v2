@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import './Dashboard.css';
 
+
 const Dashboard = ({ openLoanModal, shouldRefresh, onRefreshed }) => {
   const { actor, userPrincipal } = useAuth();
   const [loans, setLoans] = useState([]);

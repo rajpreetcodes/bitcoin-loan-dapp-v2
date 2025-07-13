@@ -3,7 +3,7 @@ import { useAuth } from './context/AuthContext';
 import './CreateLoanModal.css';
 
 const CreateLoanModal = ({ isOpen, onClose, onSuccess }) => {
-  const { isPlugConnected, connectPlug, plugInitialized } = useAuth();
+  const { isAuthenticated, actor } = useAuth();
   const [formData, setFormData] = useState({
     collateralAmount: '',
     loanAmount: '',
@@ -30,6 +30,16 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }) => {
         }));
       }
     }
+  };
+
+  const fillSampleData = () => {
+    setFormData({
+      collateralAmount: '0.1',
+      loanAmount: '0.05',
+      interestRate: '5',
+      duration: '30'
+    });
+    setValidationErrors({});
   };
 
   const validateForm = () => {
@@ -76,8 +86,8 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!isPlugConnected) {
-      setError('Please connect your wallet first');
+    if (!isAuthenticated) {
+      setError('Please login first');
       return;
     }
     
@@ -89,7 +99,9 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }) => {
     setError(null);
     
     try {
-      const actor = await getActor();
+      if (!actor) {
+        throw new Error('Actor not initialized. Please login again.');
+      }
       
       const collateralAmount = parseFloat(formData.collateralAmount);
       const loanAmount = parseFloat(formData.loanAmount);
@@ -103,7 +115,8 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }) => {
         days: duration
       });
       
-      const result = await actor.create_loan(collateralAmount, loanAmount, interestRate, duration);
+      // Backend only expects collateralAmount and loanAmount
+      const result = await actor.create_loan(collateralAmount, loanAmount);
       
       console.log('Loan created successfully:', result);
       
@@ -139,6 +152,18 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }) => {
     }
   };
 
+  // Calculate estimated repayment amount
+  const calculateRepayment = () => {
+    if (formData.loanAmount && formData.interestRate) {
+      const loan = parseFloat(formData.loanAmount);
+      const rate = parseFloat(formData.interestRate) / 100;
+      return loan + (loan * rate);
+    }
+    return null;
+  };
+
+  const repaymentAmount = calculateRepayment();
+
   if (!isOpen) return null;
 
   return (
@@ -161,20 +186,17 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }) => {
             Secure a loan by locking your Bitcoin as collateral. Your BTC remains under your control via smart contracts.
           </div>
 
-          {!isPlugConnected && (
-            <div className="wallet-connect-section">
-              <p>Connect your wallet to create a loan</p>
+          <form onSubmit={handleSubmit} className="loan-form">
+            <div className="form-actions">
               <button
-                className="btn btn-primary"
-                onClick={connectPlug}
-                disabled={!plugInitialized}
+                type="button"
+                className="btn btn-secondary"
+                onClick={fillSampleData}
               >
-                {!plugInitialized ? 'Install Plug Wallet' : 'Connect Wallet'}
+                Fill Sample Data
               </button>
             </div>
-          )}
 
-          <form onSubmit={handleSubmit} className="loan-form">
             <div className="form-group">
               <label htmlFor="collateralAmount" className="form-label">
                 Bitcoin Collateral Amount
@@ -188,7 +210,7 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }) => {
                 onChange={handleInputChange}
                 className={`form-input ${validationErrors.collateralAmount ? 'error' : ''}`}
                 placeholder="e.g., 0.1"
-                disabled={isLoading || !isPlugConnected}
+                disabled={isLoading}
                 autoComplete="off"
               />
               {validationErrors.collateralAmount && (
@@ -209,7 +231,7 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }) => {
                 onChange={handleInputChange}
                 className={`form-input ${validationErrors.loanAmount ? 'error' : ''}`}
                 placeholder="e.g., 0.05"
-                disabled={isLoading || !isPlugConnected}
+                disabled={isLoading}
                 autoComplete="off"
               />
               {validationErrors.loanAmount && (
@@ -230,7 +252,7 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }) => {
                 onChange={handleInputChange}
                 className={`form-input ${validationErrors.interestRate ? 'error' : ''}`}
                 placeholder="e.g., 5"
-                disabled={isLoading || !isPlugConnected}
+                disabled={isLoading}
                 autoComplete="off"
               />
               {validationErrors.interestRate && (
@@ -251,7 +273,7 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }) => {
                 onChange={handleInputChange}
                 className={`form-input ${validationErrors.duration ? 'error' : ''}`}
                 placeholder="e.g., 30"
-                disabled={isLoading || !isPlugConnected}
+                disabled={isLoading}
                 autoComplete="off"
               />
               {validationErrors.duration && (
@@ -259,13 +281,35 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }) => {
               )}
             </div>
 
+            {repaymentAmount && (
+              <div className="loan-summary">
+                <h3>Loan Summary</h3>
+                <div className="summary-item">
+                  <span>Loan Amount:</span>
+                  <span>{parseFloat(formData.loanAmount).toFixed(4)} ckBTC</span>
+                </div>
+                <div className="summary-item">
+                  <span>Interest Rate:</span>
+                  <span>{parseFloat(formData.interestRate).toFixed(2)}%</span>
+                </div>
+                <div className="summary-item">
+                  <span>Duration:</span>
+                  <span>{formData.duration} days</span>
+                </div>
+                <div className="summary-item total">
+                  <span>Total Repayment:</span>
+                  <span>{repaymentAmount.toFixed(4)} ckBTC</span>
+                </div>
+              </div>
+            )}
+
             {error && <div className="error-message">{error}</div>}
 
             <div className="modal-actions">
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={isLoading || !isPlugConnected}
+                disabled={isLoading}
               >
                 {isLoading ? (
                   <>

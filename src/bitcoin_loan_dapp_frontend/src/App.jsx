@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
-import { CreateLoanModal } from './components/CreateLoanModal';
+import CreateLoanModal from './CreateLoanModal';
 import Dashboard from './Dashboard';
 import EscrowDashboard from './EscrowDashboard';
 import { CreateEscrowModal } from './CreateEscrowModal';
 import toast, { Toaster } from 'react-hot-toast';
-import './index.css'; // This is the stylesheet we will create next
+import './index.css';
 
 function App() {
-  const { login, logout, connectPlug, isAuthenticated, isPlugConnected, actor, userPrincipal, walletBalances, isConnecting } = useAuth();
+  const { login, logout, isAuthenticated, actor, userPrincipal, isConnecting } = useAuth();
 
   const [loans, setLoans] = useState([]);
   const [btcAddress, setBtcAddress] = useState('');
@@ -212,19 +212,17 @@ function App() {
       <Toaster position="top-center" reverseOrder={false} />
       
       {/* Modals */}
-      {isModalOpen && 
-        <CreateLoanModal 
+      {isModalOpen && (
+        <CreateLoanModal
           isOpen={isModalOpen}
           onClose={() => {
             setIsModalOpen(false);
-            // Refresh data after modal closes
             fetchUserData();
-            // Set flag to refresh loans in the Dashboard
             setShouldRefreshLoans(true);
           }}
-          onLoanCreated={handleLoanCreated}
+          onSuccess={handleLoanCreated}
         />
-      }
+      )}
       
       {isEscrowModalOpen && 
         <CreateEscrowModal 
@@ -258,28 +256,17 @@ function App() {
           </button>
         </div>
         <div className="nav-actions">
-          {isPlugConnected ? (
-            <div className="wallet-status">
-              <div className="wallet-indicator connected">
-                <span className="wallet-dot"></span>
-                <span className="wallet-text">Wallet Connected</span>
-              </div>
-              {isPlugConnected && walletBalances && (
-                <div className="wallet-balance">
-                  <span>{walletBalances.BTC?.toFixed(4)} BTC <small style={{opacity: 0.7}}>(Demo)</small></span>
-                  <span>{walletBalances.ckBTC?.toFixed(4)} ckBTC <small style={{opacity: 0.7}}>(Demo)</small></span>
-                </div>
-              )}
+          <div className="user-info">
+            <div className="user-status">
+              <span className="user-dot"></span>
+              <span className="user-text">Authenticated</span>
             </div>
-          ) : (
-            <button 
-              className="connect-wallet-button"
-              onClick={connectPlug}
-              disabled={isConnecting}
-            >
-              {isConnecting ? 'Connecting...' : 'Connect Wallet'}
-            </button>
-          )}
+            {userPrincipal && (
+              <div className="user-principal">
+                <span>Principal: {userPrincipal.toString().substring(0, 10)}...</span>
+              </div>
+            )}
+          </div>
           <button className="logout-button" onClick={logout}>
             Logout
           </button>

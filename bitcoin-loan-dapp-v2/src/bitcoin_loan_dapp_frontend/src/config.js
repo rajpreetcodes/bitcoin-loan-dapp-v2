@@ -1,0 +1,2 @@
+export const BACKEND_CANISTER_ID = process.env.BACKEND_CANISTER_ID || process.env.CANISTER_ID_BACKEND || 'rrkah-fqaaa-aaaaa-aaaaq-cai';
+export const HOST = process.env.DFX_NETWORK === 'ic' ? 'https://ic0.app' : 'http://localhost:4943'; 
